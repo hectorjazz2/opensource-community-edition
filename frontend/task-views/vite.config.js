@@ -12,7 +12,10 @@ export default defineConfig({
             "@": fileURLToPath(new URL("./src", import.meta.url)),
         },
     },
-    base: "/dist/task-views/",
+    // Relative, not "/dist/task-views/": an absolute base would bake a
+    // domain-root assumption into the compiled CSS/JS asset URLs (e.g. font
+    // url()s), breaking subfolder deployments like /PMS/kewico_cake4/.
+    base: "./",
     build: {
         outDir: fileURLToPath(new URL("../../webroot/dist/task-views", import.meta.url)),
         emptyOutDir: true,

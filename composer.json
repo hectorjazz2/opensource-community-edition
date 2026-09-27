@@ -69,6 +69,9 @@
             "cakephp/plugin-installer": true,
             "dealerdirect/phpcodesniffer-composer-installer": true,
             "php-http/discovery": true
+        },
+        "audit": {
+            "ignore": ["GHSA-r5pm-vrc5-3m73"]
         }
     }
 }

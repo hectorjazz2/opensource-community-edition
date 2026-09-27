@@ -24,15 +24,18 @@ if ($fullBaseUrl) {
 $sapi = php_sapi_name();
 $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
 $scriptFilename = $_SERVER['SCRIPT_FILENAME'] ?? '';
-$isDevServer =  in_array($sapi, [ 'frankenphp', 'cli-server', 'cli', 'fpm-fcgi', 'apache2handler']);
+// CLI and single-file dev servers always run from the app root, so there's no
+// request path to detect a subfolder from.
+$isCliOrDevServer = in_array($sapi, ['cli', 'cli-server', 'frankenphp']);
+// Only a deployment where the document root is the project root (not webroot/)
+// routes through "webroot/index.php" in SCRIPT_NAME, e.g. http://localhost/PMS/kewico_cake4/
+// via the root .htaccess. A vhost pointed straight at webroot/ never has that
+// segment, so it correctly falls through to root ('/').
 define(
     'SUB_FOLDER',
-    $isDevServer ? '/' :
-    (
-        $scriptName && $scriptFilename ?
+    (!$isCliOrDevServer && $scriptName && $scriptFilename && strpos($scriptName, 'webroot/index.php') !== false) ?
         (($subFolder = rtrim(str_replace('webroot/index.php', '', $scriptName), '/')) ? "$subFolder/" : '/')
         : '/'
-    )
 );
 
 define('HTTP_SERVER', PROTOCOL . DOMAIN);
