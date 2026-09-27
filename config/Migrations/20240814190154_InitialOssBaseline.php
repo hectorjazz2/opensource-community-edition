@@ -8,14 +8,15 @@ use Migrations\AbstractMigration;
  *
  * This single migration replaces the original per-feature migration history
  * (Initial plus a chain of Add and Drop migrations that created then removed
- * the enterprise/legacy tables). It applies the exact schema they produced,
- * captured as a `pg_dump --schema-only` of a freshly-migrated database, so a
- * fresh install builds the final Community-Edition schema in one step with no
- * create-then-drop churn.
+ * the enterprise/legacy tables). It applies the exact schema they produced
+ * (originally captured with `pg_dump --schema-only`, now converted to MySQL),
+ * so a fresh install builds the final Community-Edition schema in one step
+ * with no create-then-drop churn.
  *
- * The SQL lives beside this file (InitialOssBaseline.sql). It is applied as a
- * single statement batch; PostgreSQL runs DDL transactionally, so a failure
- * rolls the whole thing back.
+ * The SQL lives beside this file (InitialOssBaseline.sql). Statements are run
+ * one at a time: PDO MySQL only reports errors for the first statement of a
+ * multi-statement batch, and MySQL DDL is not transactional, so a failure
+ * stops at the offending statement. Drop the database to retry.
  */
 class InitialOssBaseline extends AbstractMigration
 {
@@ -25,7 +26,12 @@ class InitialOssBaseline extends AbstractMigration
         if ($sql === false || trim($sql) === '') {
             throw new \RuntimeException('InitialOssBaseline.sql is missing or empty.');
         }
-        $this->execute($sql);
+        $sql = preg_replace('/^--.*$/m', '', $sql);
+        foreach (preg_split('/;\s*\n/', $sql) as $statement) {
+            if (trim($statement) !== '') {
+                $this->execute($statement);
+            }
+        }
     }
 
     /**

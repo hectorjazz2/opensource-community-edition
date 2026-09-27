@@ -40,8 +40,8 @@ use Exception;
  * JSON map, e.g. {"epic":0,"feature":0,"story":1}. The "Task" type is always
  * shown and has no flag.
  *
- * Idempotent — safe to run on any database state (uses ADD COLUMN IF NOT EXISTS).
- * PostgreSQL backfills the default into every existing row, so no row is null.
+ * Idempotent — safe to run on any database state (checks information_schema first).
+ * MySQL backfills the default into every existing row, so no row is null.
  * Intended for manual runs on deploy.
  *
  * Usage:
@@ -98,7 +98,7 @@ class AddTaskTypeFilterColumnCommand extends Command
 
             $connection->execute(
                 "ALTER TABLE default_task_views " .
-                "ADD COLUMN IF NOT EXISTS task_type_filter text NOT NULL DEFAULT '" . self::DEFAULT_FILTER . "'"
+                "ADD COLUMN task_type_filter text NOT NULL DEFAULT ('" . self::DEFAULT_FILTER . "')"
             );
 
             if (!$this->columnExists($connection)) {
@@ -148,7 +148,7 @@ class AddTaskTypeFilterColumnCommand extends Command
     {
         $rows = $connection->execute(
             "SELECT column_name FROM information_schema.columns " .
-            "WHERE table_name = 'default_task_views' AND column_name = 'task_type_filter'"
+            "WHERE table_schema = DATABASE() AND table_name = 'default_task_views' AND column_name = 'task_type_filter'"
         )->fetchAll('assoc');
 
         return !empty($rows);

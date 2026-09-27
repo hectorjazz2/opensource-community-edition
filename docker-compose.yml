@@ -1,6 +1,6 @@
 name: orangescrum
 
-# Single self-contained stack: Orangescrum app + PostgreSQL.
+# Single self-contained stack: Orangescrum app + MySQL.
 #   docker compose up -d --build
 #
 # Every instance-specific value (ports, credentials, public URL) comes from the
@@ -16,8 +16,8 @@ services:
       # Host port is configurable; the container always listens on 80.
       - "${APP_PORT:-8080}:80"
     environment:
-      DB_HOST: orangescrum-postgres
-      DB_PORT: "5432"
+      DB_HOST: orangescrum-mysql
+      DB_PORT: "3306"
       DB_USERNAME: ${DB_USERNAME:-orangescrum}
       DB_PASSWORD: ${DB_PASSWORD:-orangescrum}
       DB_NAME: ${DB_NAME:-orangescrum}
@@ -42,7 +42,7 @@ services:
       - orangescrum-app-files:/var/www/html/webroot/files
       - orangescrum-app-config:/var/www/html/config
     depends_on:
-      orangescrum-postgres:
+      orangescrum-mysql:
         condition: service_healthy
     restart: unless-stopped
     networks:
@@ -53,19 +53,21 @@ services:
       timeout: 10s
       retries: 3
 
-  orangescrum-postgres:
-    image: postgres:16
+  orangescrum-mysql:
+    image: mysql:8.0
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
     environment:
-      POSTGRES_USER: ${DB_USERNAME:-orangescrum}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-orangescrum}
-      POSTGRES_DB: ${DB_NAME:-orangescrum}
+      MYSQL_DATABASE: ${DB_NAME:-orangescrum}
+      MYSQL_USER: ${DB_USERNAME:-orangescrum}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-orangescrum}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-orangescrum_root}
     volumes:
-      - orangescrum-postgres-data:/var/lib/postgresql/data
+      - orangescrum-mysql-data:/var/lib/mysql
     restart: unless-stopped
     networks:
       - orangescrum-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-orangescrum}"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -73,7 +75,7 @@ services:
 volumes:
   orangescrum-app-files:
   orangescrum-app-config:
-  orangescrum-postgres-data:
+  orangescrum-mysql-data:
 
 networks:
   orangescrum-network:

@@ -622,9 +622,10 @@ class FormatComponent extends Component
         $searchcase = '';
         $escape = ' ';
         if (trim(urldecode($caseSrch))) {
-            // PostgreSQL-safe escaping for the single-quoted LIKE literals below;
-            // addslashes() does not neutralise quotes when standard_conforming_strings is on.
-            $srchstr1 = str_replace("'", "''", trim(urldecode($caseSrch)));
+            // Escaping for the single-quoted LIKE literals below. MySQL treats a
+            // backslash as an escape inside string literals, so it must be
+            // doubled too or `\'` would end the literal.
+            $srchstr1 = str_replace(['\\', "'"], ['\\\\', "''"], trim(urldecode($caseSrch)));
             if (substr($srchstr1, 0, 1) == '#') {
                 $srchstr1 = substr($srchstr1, 1, strlen($srchstr1));
             }
@@ -4391,7 +4392,7 @@ class FormatComponent extends Component
 
     public function getStatusGroups($comp_id)
     {
-        $sql = 'SELECT StatusGroup.id, StatusGroup.name FROM status_groups AS StatusGroup WHERE StatusGroup.company_id IN(' . $comp_id . ', 0) AND StatusGroup.parent_id = 0 ORDER BY StatusGroup.is_default DESC, CASE WHEN StatusGroup.is_default = 0 THEN StatusGroup.name ELSE CAST(StatusGroup.id AS VARCHAR) END ASC';
+        $sql = 'SELECT StatusGroup.id, StatusGroup.name FROM status_groups AS StatusGroup WHERE StatusGroup.company_id IN(' . $comp_id . ', 0) AND StatusGroup.parent_id = 0 ORDER BY StatusGroup.is_default DESC, CASE WHEN StatusGroup.is_default = 0 THEN StatusGroup.name ELSE CAST(StatusGroup.id AS CHAR) END ASC';
         $connection = ConnectionManager::get('default');
         $wf_list = $connection->execute($sql)->fetchAll('assoc');
         return (!empty($wf_list)) ? $wf_list : [];

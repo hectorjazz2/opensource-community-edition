@@ -6,10 +6,10 @@ There is **no licence key**, and no limit on users, projects or storage.
 There are two ways to install it:
 
 - **[Docker](#option-a-docker-recommended)** — recommended. Everything (PHP,
-  PostgreSQL, web server) runs in containers. This is the fastest and most
+  MySQL, web server) runs in containers. This is the fastest and most
   reliable path.
 - **[Manual](#option-b-manual-install-without-docker)** — install PHP,
-  PostgreSQL and a web server yourself. Use this only if you cannot run Docker.
+  MySQL and a web server yourself. Use this only if you cannot run Docker.
 
 Either way, you finish in the browser with a short **[setup wizard](#the-setup-wizard)**.
 
@@ -22,7 +22,7 @@ Either way, you finish in the browser with a short **[setup wizard](#the-setup-w
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows,
   macOS or Linux), or Docker Engine + the Compose plugin on a server.
 
-Nothing else is needed on the host — PHP, PostgreSQL 16 and the web server all
+Nothing else is needed on the host — PHP, MySQL 8.0 and the web server all
 run inside containers.
 
 ### 1. Get the code
@@ -61,7 +61,7 @@ docker compose up -d --build
 ```
 
 The first run builds the image and starts two containers (the app and
-PostgreSQL). Give it a minute; you can watch progress with
+MySQL). Give it a minute; you can watch progress with
 `docker compose logs -f`.
 
 ### 4. Finish in the browser
@@ -78,9 +78,9 @@ it at `http://<that-machine-name>:8080`.
 
 ### Requirements
 
-- **PHP 8.2** or newer, with these extensions: `pdo`, `pdo_pgsql`, `openssl`,
+- **PHP 8.2** or newer, with these extensions: `pdo`, `pdo_mysql`, `openssl`,
   `mbstring`, `tokenizer`, `intl`, `json`, `xml`, `ctype`, `curl`, `gd`, `zip`.
-- **PostgreSQL 16**.
+- **MySQL 8.0** (8.0.13 or newer) or **MariaDB 10.5+**.
 - **Composer 2**.
 - A web server (Apache or Nginx) with the document root pointing at `webroot/`.
 - **Node.js 18+** — only if you intend to rebuild the front-end bundles; the
@@ -102,11 +102,12 @@ it at `http://<that-machine-name>:8080`.
    composer run-script post-install-cmd --no-interaction
    ```
 
-2. **Create an empty PostgreSQL database** and a user that owns it, e.g.:
+2. **Create an empty MySQL database** and a user that owns it, e.g.:
 
    ```sql
-   CREATE USER orangescrum WITH PASSWORD 'orangescrum';
-   CREATE DATABASE orangescrum OWNER orangescrum;
+   CREATE DATABASE orangescrum CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   CREATE USER 'orangescrum'@'localhost' IDENTIFIED BY 'orangescrum';
+   GRANT ALL PRIVILEGES ON orangescrum.* TO 'orangescrum'@'localhost';
    ```
 
 3. **Point your web server** document root at `webroot/` and ensure
@@ -117,10 +118,9 @@ it at `http://<that-machine-name>:8080`.
    the default data (roles, menus, task types, workflow statuses) and creates
    your admin account — enter the database credentials from step 2 when asked.
 
-> The web wizard is the supported way to initialise the schema because it also
-> toggles PostgreSQL identity columns around the seed step. Running
-> `bin/cake migrations migrate` / `seed` by hand is a developer-only path and
-> needs that toggling done manually.
+> The web wizard is the supported way to initialise the schema. Running
+> `bin/cake migrations migrate` / `seed` (or `bin/cake init_database --seed`)
+> by hand is a developer-only path.
 
 ---
 
@@ -131,7 +131,7 @@ However you installed, the browser wizard has the same steps:
 1. **System check** — verifies your PHP version and required extensions. Fix any
    red item before continuing.
 2. **Database** — enter the host, port, name, user and password. On Docker the
-   defaults are pre-filled (`host = orangescrum-postgres`). The wizard creates
+   defaults are pre-filled (`host = orangescrum-mysql`). The wizard creates
    the database if it does not exist. If it finds an **existing database with
    data**, it offers two choices:
    - **Keep data & upgrade** — reuse the existing tables.
@@ -162,14 +162,27 @@ Your data lives in Docker volumes and survives stop / start / update.
 
 ```bash
 # Backup
-docker compose exec orangescrum-postgres pg_dump -U orangescrum orangescrum > backup.sql
+docker compose exec orangescrum-mysql sh -c 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' > backup.sql
 
 # Restore (into a running, empty database)
-cat backup.sql | docker compose exec -T orangescrum-postgres psql -U orangescrum orangescrum
+cat backup.sql | docker compose exec -T orangescrum-mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
 ```
 
 Also back up the uploaded-files volume (`orangescrum-app-files`) if you store
 attachments.
+
+### Moving an existing PostgreSQL install to MySQL
+
+Earlier releases ran on PostgreSQL. To carry an existing database over:
+
+1. Create the empty MySQL database (see the manual install above) and point
+   `config/app_local.php` at it (`Cake\Database\Driver\Mysql`, port 3306).
+2. Build the schema: `bin/cake migrations migrate` then
+   `bin/cake migrations migrate -p EmailTemplating`.
+3. Copy the data (needs the `pdo_pgsql` PHP extension):
+   `bin/cake migrate_postgres_to_mysql --pg-host localhost --pg-database orangescrum --pg-username postgres --pg-password <password>`.
+   It copies every table, replaces the migration history, and checks that the
+   row counts match on both sides.
 
 ### Desktop app
 
@@ -224,7 +237,7 @@ published port.
 ## Troubleshooting
 
 **"The database already contains tables" on the Database step.**
-The target database is not empty (common when the Postgres volume persists from
+The target database is not empty (common when the MySQL volume persists from
 a previous install). Choose **Erase & clean reinstall** to wipe and install
 fresh, or **Keep data & upgrade** to reuse it. For a truly clean slate on
 Docker, run `docker compose down -v` first.

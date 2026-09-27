@@ -184,7 +184,7 @@ class UserService
 
         // ── active / invited / disabled (grouped by is_active) ──────────────
         $grpcountQuery = $companyUsersTable->find()
-            ->select(['usrcnt' => 'COUNT("CompanyUsers"."id")', 'is_active'])
+            ->select(['usrcnt' => 'COUNT(CompanyUsers.id)', 'is_active'])
             ->join([
                 'table' => 'users',
                 'alias' => 'Users',
@@ -193,7 +193,7 @@ class UserService
             ])
             ->where([
                 'CompanyUsers.company_id' => $companyId,
-                '"Users".email IS NOT NULL',
+                'Users.email IS NOT NULL',
             ]);
         if ($searchQuery) {
             $grpcountQuery->andWhere($searchQuery);
@@ -221,7 +221,7 @@ class UserService
             ])
             ->where([
                 'CompanyUsers.company_id' => $companyId,
-                '"Users".email IS NOT NULL',
+                'Users.email IS NOT NULL',
             ]);
         if ($searchQuery) {
             $invitedQuery->andWhere($searchQuery);
@@ -232,7 +232,7 @@ class UserService
 
         // ── client count (grouped by is_client) ─────────────────────────────
         $clientcntQuery = $companyUsersTable->find()
-            ->select(['cnt' => 'COUNT("CompanyUsers"."id")', 'is_client'])
+            ->select(['cnt' => 'COUNT(CompanyUsers.id)', 'is_client'])
             ->join([
                 'table' => 'users',
                 'alias' => 'Users',
@@ -241,7 +241,7 @@ class UserService
             ])
             ->where([
                 'CompanyUsers.company_id' => $companyId,
-                '"Users".email IS NOT NULL',
+                'Users.email IS NOT NULL',
             ]);
         if ($searchQuery) {
             $clientcntQuery->andWhere($searchQuery);
@@ -261,7 +261,7 @@ class UserService
         // tab count matches the rows shown.
         $sevenDaysAgo = date('Y-m-d H:i:s', strtotime('-7 days', time()));
         $recentQuery = $usersTable->find()
-            ->select(['cnt' => 'COUNT("Users"."id")'])
+            ->select(['cnt' => 'COUNT(Users.id)'])
             ->join([
                 [
                     'table' => 'company_users',
@@ -315,7 +315,7 @@ class UserService
             ->where([
                 'CompanyUsers.company_id' => $companyId,
                 'CompanyUsers.is_active' => 1,
-                '"Users".email IS NOT NULL',
+                'Users.email IS NOT NULL',
             ])
             ->disableHydration()
             ->all()

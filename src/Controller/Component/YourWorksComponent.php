@@ -92,7 +92,7 @@ class YourWorksComponent extends Component
         ];
 
         $currentDate = date('Y-m-d', strtotime(GMT_DATETIME));
-        $dueDatefield = "date(\"Easycases\".\"due_date\") = '$currentDate'"; // change as per db type
+        $dueDatefield = "date(Easycases.due_date) = '$currentDate'"; // change as per db type
 
         $baseConditions = [
             'Easycases.istype' => EasycasesTable::TYPE_POST,
@@ -165,9 +165,9 @@ class YourWorksComponent extends Component
         $today_task = $todayTaskQuery->disableHydration()->toArray();
         $todays_task_count = $todayTaskCountQuery->count();
 
-        $dueDatefieldFrom = "date(\"Easycases\".\"due_date\") > '$currentDate'"; // change as per db type
+        $dueDatefieldFrom = "date(Easycases.due_date) > '$currentDate'"; // change as per db type
         $toDate = date('Y-m-d', strtotime(GMT_DATETIME . ' +3 days'));
-        $dueDatefieldTo = "date(\"Easycases\".\"due_date\") <= '$toDate'"; // change as per db type
+        $dueDatefieldTo = "date(Easycases.due_date) <= '$toDate'"; // change as per db type
         $upcomingTaskConditions = $baseConditions + [
             $dueDatefieldFrom,
             $dueDatefieldTo,

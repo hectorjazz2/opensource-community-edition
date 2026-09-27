@@ -122,7 +122,7 @@ class UserLoginsTable extends Table
         $login_count_query = $this->find()
             ->where(array_merge(['CompanyUsers.is_active' => 1], $cond))
             ->select([
-                'user_engaged' =>  '(COUNT(DISTINCT "UserLogins".user_id))'
+                'user_engaged' =>  '(COUNT(DISTINCT UserLogins.user_id))'
             ])
             ->join([
                 'table' => 'company_users',

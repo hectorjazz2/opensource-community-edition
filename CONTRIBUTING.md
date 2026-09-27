@@ -24,7 +24,7 @@ a weekend on a change that does not fit the project's direction.
 
 See [`docs/INSTALLATION_AND_UPGRADE_GUIDE.md`](docs/INSTALLATION_AND_UPGRADE_GUIDE.md).
 
-Stack: CakePHP 4.6 (PHP 8.2+), PostgreSQL 16, Docker.
+Stack: CakePHP 4.6 (PHP 8.2+), MySQL 8.0, Docker.
 
 ```bash
 docker compose up -d

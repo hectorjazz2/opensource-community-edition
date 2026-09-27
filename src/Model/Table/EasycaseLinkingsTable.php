@@ -179,7 +179,7 @@ class EasycaseLinkingsTable extends Table
                 'User.short_name',
                 'EasycaseLinking.easycase_relate_id',
                 'easycase_relate_title' => 'EasycaseLinking.title',
-                'Assigned' => ' (CASE WHEN "Easycases".assign_to = 1 THEN \'Me\' ELSE "User".short_name END) ',
+                'Assigned' => ' (CASE WHEN Easycases.assign_to = 1 THEN \'Me\' ELSE User.short_name END) ',
             ])
             ->join([
                 'table' => 'users',

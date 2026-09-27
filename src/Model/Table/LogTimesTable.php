@@ -220,7 +220,7 @@ class LogTimesTable extends Table
                 'Easycases.istype' => EasycasesTable::TYPE_POST
             ] + $cond)
             ->select([
-                'secds' => '(SUM("LogTimes".total_hours))'
+                'secds' => '(SUM(LogTimes.total_hours))'
             ])
             ->join([
                 'table' => 'easycases',

@@ -650,7 +650,7 @@ class ProjectsController extends AppController
 
             if (!empty($scrch)) {
                 $pj = $scrch . '%';
-                $query .= " AND Project.name LIKE '%" . str_replace("'", "''", (string)$scrch) . "%'";
+                $query .= " AND Project.name LIKE '%" . str_replace(['\\', "'"], ['\\\\', "''"], (string)$scrch) . "%'";
             }
             $query .= " AND Project.company_id='" . SES_COMP . "' AND Project.purpose_type = 'project'";
 
@@ -681,7 +681,7 @@ class ProjectsController extends AppController
                 $query .= " AND Project.name LIKE '" . addslashes($pj) . "'";
             }
             if (!empty($pjname)) {
-                $query .= " AND Project.name LIKE '%" . str_replace("'", "''", (string)$pjname) . "%' ";
+                $query .= " AND Project.name LIKE '%" . str_replace(['\\', "'"], ['\\\\', "''"], (string)$pjname) . "%' ";
             }
             if (!empty($p_type)) {
                 $query .= ' AND Types.id IN(' . $p_type . ')';
@@ -1275,7 +1275,7 @@ class ProjectsController extends AppController
                 $query .= " AND Project.name LIKE '" . addslashes($pj) . "'";
             }
             if (!empty($pjname)) {
-                $query .= " AND Project.name LIKE '%" . str_replace("'", "''", (string)$pjname) . "%' ";
+                $query .= " AND Project.name LIKE '%" . str_replace(['\\', "'"], ['\\\\', "''"], (string)$pjname) . "%' ";
             }
             if (!empty($p_type)) {
                 $query .= ' AND Types.id IN(' . $p_type . ')';

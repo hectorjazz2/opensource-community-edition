@@ -60,7 +60,6 @@ class ApplyCake2To4Updates extends AbstractMigration
             if (!$programsMenuExists) {
                 $this->execute("
                     INSERT INTO menus (id, parent_id, name, is_active, menu_type, menu_icon, menu_order, default_menu, conditional_menu, meta, created, modified)
-                    OVERRIDING SYSTEM VALUE
                     VALUES(
                         61, 
                         0, 
@@ -85,6 +84,6 @@ class ApplyCake2To4Updates extends AbstractMigration
         // - project_metas.project_code (AddV2ToV3SchemaChanges)
         // - invoice_customers.customer_code (AddV2ToV3SchemaChanges)
         // - user_skills.years_of_experience (AddV2ToV3SchemaChanges)
-        // - type_companies.project_id (handled in FixMySQLToPostgresDataTypes migration)
+        // - type_companies.project_id (handled in FixLegacyDataTypes migration)
     }
 }

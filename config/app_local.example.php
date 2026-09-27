@@ -57,11 +57,6 @@ return [
             'username' => env('DB_USERNAME', '__USERNAME__'),
             'password' => env('DB_PASSWORD', '__PASSWORD__'),
             'database' => env('DB_NAME', '__DATABASE__'),
-            /*
-             * If not using the default 'public' schema with the PostgreSQL driver
-             * set it here.
-             */
-            //'schema' => 'myapp',
 
             /*
              * You can use a DSN string to set the entire configuration
@@ -79,7 +74,6 @@ return [
             'username' => 'my_app',
             'password' => 'secret',
             'database' => 'test_myapp',
-            //'schema' => 'myapp',
             'url' => env('DATABASE_TEST_URL', 'sqlite://127.0.0.1/tests.sqlite'),
         ],
     ],

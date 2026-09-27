@@ -8,7 +8,7 @@ Plan projects, track tasks on lists & kanban boards, log time, run custom workfl
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php&logoColor=white)](https://www.php.net/)
 [![CakePHP](https://img.shields.io/badge/CakePHP-4.6-D33C43?logo=cakephp&logoColor=white)](https://cakephp.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
@@ -117,13 +117,13 @@ Cloud editions — [contact sales](https://www.orangescrum.com/contact-sales).
 | Layer | Technology |
 |-------|------------|
 | Backend | CakePHP 4.6 · PHP 8.2+ |
-| Database | PostgreSQL 16 |
+| Database | MySQL 8.0 / MariaDB 10.5+ |
 | Frontend | Vue 3 (Vite) + AngularJS (legacy views) |
 | Runtime | Docker & Docker Compose (Apache + PHP) |
 
 ## Quick Start
 
-**Requirements:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows, macOS or Linux). Nothing else — PHP, PostgreSQL and the web server all run inside Docker.
+**Requirements:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows, macOS or Linux). Nothing else — PHP, MySQL and the web server all run inside Docker.
 
 ```bash
 git clone https://github.com/Orangescrum/opensource-community-edition.git
@@ -151,7 +151,7 @@ docker compose pull && docker compose up -d   # update
 Your data lives in Docker volumes and survives stop/start/update. To back it up:
 
 ```bash
-docker compose exec orangescrum-postgres pg_dump -U orangescrum orangescrum > backup.sql
+docker compose exec orangescrum-mysql sh -c 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' > backup.sql
 ```
 
 ## Desktop App
@@ -160,7 +160,7 @@ A Windows desktop client lives in [`desktop/`](desktop/). It connects to the ser
 
 ## Development Setup
 
-Only needed if you intend to change the code. Requires PHP 8.2, Composer, PostgreSQL 16 and Node.js 18+.
+Only needed if you intend to change the code. Requires PHP 8.2, Composer, MySQL 8.0 and Node.js 18+.
 
 ```bash
 composer install
@@ -223,7 +223,7 @@ paid Orangescrum Self-Hosted edition —
 
 **Can I self-host it?**
 Yes, that is the only way it runs. `docker compose up -d --build` and the setup
-wizard, or a manual install with PHP and PostgreSQL. See
+wizard, or a manual install with PHP and MySQL. See
 [INSTALL.md](INSTALL.md).
 
 **Does it track time?**

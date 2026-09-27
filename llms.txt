@@ -5,7 +5,7 @@
 > collaboration under AGPL-3.0, with no licence key and no per-user fees.
 
 Orangescrum Community Edition is free, open-source project management software
-built on CakePHP 4.6, PHP 8.2, PostgreSQL 16 and Docker. It gives you projects,
+built on CakePHP 4.6, PHP 8.2, MySQL 8.0 and Docker. It gives you projects,
 tasks and subtasks, task groups, list and kanban boards, a calendar, custom
 statuses and workflows per project, time logging with billable hours, reports
 and dashboards, and CSV import and export. You self-host it, so project data

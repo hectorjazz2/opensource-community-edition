@@ -141,6 +141,23 @@ class ProjectsTable extends Table
      * @param array $config The configuration for the Table.
      * @return void
      */
+    /**
+     * `program_name_key` is a generated column that only backs the
+     * unique-program-name index; hide it so the ORM never selects or writes it
+     * (the database rejects explicit values for generated columns).
+     *
+     * @return \Cake\Database\Schema\TableSchemaInterface
+     */
+    public function getSchema(): \Cake\Database\Schema\TableSchemaInterface
+    {
+        $schema = parent::getSchema();
+        if ($schema->hasColumn('program_name_key')) {
+            $schema->removeColumn('program_name_key');
+        }
+
+        return $schema;
+    }
+
     public function initialize(array $config): void
     {
         parent::initialize($config);
@@ -1248,7 +1265,7 @@ class ProjectsTable extends Table
 
         // Cast the entire case expression to INTEGER
         $ecDueCount = $query->func()->sum(
-            $query->func()->cast($caseExpr, 'INTEGER')
+            $query->func()->cast($caseExpr, 'SIGNED')
         );
 
         $caseCloseExpr = $query->newExpr()->case()
@@ -1262,7 +1279,7 @@ class ProjectsTable extends Table
             ->else(0);
 
         $ecDueCloseCount = $query->func()->sum(
-            $query->func()->cast($caseCloseExpr, 'INTEGER')
+            $query->func()->cast($caseCloseExpr, 'SIGNED')
         );
         $totalCloseTask = $query->func()->sum(
             $query->func()->cast(
@@ -1270,7 +1287,7 @@ class ProjectsTable extends Table
                     ->when(['Easycases.legend' => 3])
                     ->then(1)
                     ->else(0),
-                'INTEGER'
+                'SIGNED'
             )
         );
 

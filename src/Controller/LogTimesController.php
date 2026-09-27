@@ -79,7 +79,7 @@ class LogTimesController extends AppController
      * column name must never be taken from it directly.
      *
      * The values that are not `LogTime.*` are output aliases of the correlated
-     * subqueries in the select list, which Postgres accepts in ORDER BY. A
+     * subqueries in the select list, which MySQL accepts in ORDER BY. A
      * value may be a list, which orders by each column in turn.
      */
     private const SORTABLE = [
@@ -432,8 +432,8 @@ class LogTimesController extends AppController
         $hourTotals = ['billable' => 0, 'nonBillable' => 0];
         if ($options['includeHourTotals']) {
             // IdentifierExpression, not a plain string: the connection quotes
-            // identifiers, so a raw "LogTime.total_hours" in SQL is folded to
-            // lowercase by Postgres and no longer matches the "LogTime" alias.
+            // identifiers, so the column must be quoted the same way as the
+            // "LogTime" alias it belongs to.
             $sumHours = function (array $billableCondition) use ($logTimesTable, $joins, $conditions) {
                 $query = $logTimesTable->selectQuery()
                     ->from(['LogTime' => 'log_times'], true)
@@ -815,7 +815,7 @@ class LogTimesController extends AppController
             $query->select([
                 'LogTimes.created',
                 'LogTimes.total_hours',
-                'hours' => $query->newExpr()->add(['ROUND("LogTimes".total_hours / 3600, 1)'])
+                'hours' => $query->newExpr()->add(['ROUND(LogTimes.total_hours / 3600, 1)'])
             ]);
             $query->contain('Projects');
             $query->where($conditions);

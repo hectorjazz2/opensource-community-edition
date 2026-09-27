@@ -298,7 +298,7 @@ class MilestonesTable extends Table
                         ->when([fn($exp) => $exp->eq('Easycases.legend', EasycasesTable::LEGEND_CLOSED)])
                         ->then(1)
                         ->else(0),
-                    'INTEGER'
+                    'SIGNED'
                 )
             ),
             'ec_start_date' => $query->func()->min($query->identifier('Easycases.gantt_start_date'), ['type' => 'date']),
@@ -313,7 +313,7 @@ class MilestonesTable extends Table
                         ])
                         ->then(1)
                         ->else(0),
-                    'INTEGER'
+                    'SIGNED'
                 )
             ),
             'ec_due_close_cnt' => $query->func()->sum(
@@ -327,7 +327,7 @@ class MilestonesTable extends Table
                         ])
                         ->then(1)
                         ->else(0),
-                    'INTEGER'
+                    'SIGNED'
                 )
             )
         ];

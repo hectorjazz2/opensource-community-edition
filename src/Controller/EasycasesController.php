@@ -8305,7 +8305,7 @@ class EasycasesController extends AppController
 
         $fields = [
             'user_name' => 'Users.name',
-            'asgnd_usr' => '(CASE WHEN "Easycases"."assign_to" > 0 THEN "Users1"."name" ELSE \'Unassigned\' END)',
+            'asgnd_usr' => '(CASE WHEN Easycases.assign_to > 0 THEN Users1.name ELSE \'Unassigned\' END)',
         ];
 
         if ($groupby == 'milestone' && $mid != 'NA' && $mid != 'qtl') {
@@ -8320,8 +8320,8 @@ class EasycasesController extends AppController
             ];
         } else {
             $fields += [
-                'is_sub_sub_task' => '(SELECT parent_task_id FROM easycases WHERE id="Easycases".parent_task_id)',
-                'sub_sub_task' => '(SELECT COUNT(parent_task_id) FROM easycases AS E1 WHERE E1.parent_task_id IN (SELECT id FROM easycases AS E2 WHERE E2.parent_task_id = "Easycases".id) AND E1.project_id = "Easycases".project_id)',
+                'is_sub_sub_task' => '(SELECT parent_task_id FROM easycases WHERE id=Easycases.parent_task_id)',
+                'sub_sub_task' => '(SELECT COUNT(parent_task_id) FROM easycases AS E1 WHERE E1.parent_task_id IN (SELECT id FROM easycases AS E2 WHERE E2.parent_task_id = Easycases.id) AND E1.project_id = Easycases.project_id)',
                 'tot_spent_hour' => 'lt.tot_spent_hour',
             ];
             $join = [

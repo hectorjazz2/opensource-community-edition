@@ -1808,7 +1808,7 @@ class RequestsController extends AppController
                 // change as per db type
                 $customSelect = [
                     'tot_spent_hour' => '(COALESCE(lt.tot_spent_hour, 0))',
-                    'Assigned' => '(CASE WHEN "Easycases".assign_to = ' . SES_ID . " THEN 'Me' ELSE \"Users\".name END)",
+                    'Assigned' => '(CASE WHEN Easycases.assign_to = ' . SES_ID . " THEN 'Me' ELSE Users.name END)",
                 ];
 
                 $caseAllQuery = $easycasesTable->find()
@@ -6470,7 +6470,7 @@ class RequestsController extends AppController
         $common_qry_sql = $easycasesTable->find()
             ->join(CommonUtility::tableSelfJoin('easycases', 'Easycase', 'Easycases'))
             ->select([
-                'count' => $easycasesTable->selectQuery()->func()->count('"Easycases".id'),
+                'count' => $easycasesTable->selectQuery()->func()->count('Easycases.id'),
                 'Easycases.legend'
             ])
             ->where([

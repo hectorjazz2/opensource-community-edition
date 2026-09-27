@@ -4,9 +4,9 @@ declare(strict_types=1);
 use Migrations\AbstractMigration;
 
 /**
- * Fix MySQL to PostgreSQL Data Type Conversions
- * 
- * This migration handles datatype conversions for databases migrated from MySQL to PostgreSQL.
+ * Fix legacy (V2) data types
+ *
+ * Converts the loosely typed columns of a V2 database to the V3 types in place.
  * Based on config/schema/updates.sql
  * 
  * Conversions:
@@ -15,11 +15,11 @@ use Migrations\AbstractMigration;
  * - case_activities.comment_id: remove NOT NULL constraint
  * - types.global: varchar → integer (renamed to is_global)
  * - milestones.start_date, end_date: remove NOT NULL constraints
- * - companies.work_hour: → float8
- * - test_runs.assignee_id: → int8
- * - role_rates.rate, actual_rate: varchar → float8
+ * - companies.work_hour: → double
+ * - test_runs.assignee_id: → bigint
+ * - role_rates.rate, actual_rate: varchar → double
  */
-class FixMySQLToPostgresDataTypes extends AbstractMigration
+class FixLegacyDataTypes extends AbstractMigration
 {
     /**
      * Change Method.
@@ -35,9 +35,10 @@ class FixMySQLToPostgresDataTypes extends AbstractMigration
             if ($easycasesTable->hasColumn('parent_task_id')) {
                 // Check if column is varchar type (from MySQL migration)
                 $columnType = $this->fetchRow("
-                    SELECT data_type 
-                    FROM information_schema.columns 
-                    WHERE table_name = 'easycases' 
+                    SELECT data_type AS data_type
+                    FROM information_schema.columns
+                    WHERE table_schema = DATABASE()
+                    AND table_name = 'easycases' 
                     AND column_name = 'parent_task_id'
                 ");
                 
@@ -45,11 +46,9 @@ class FixMySQLToPostgresDataTypes extends AbstractMigration
                     // Clean up empty/null values first for varchar columns
                     $this->execute("UPDATE easycases SET parent_task_id = '0' WHERE parent_task_id = '' OR parent_task_id IS NULL");
                     
-                    // Use USING clause for PostgreSQL type conversion
                     $this->execute("
                         ALTER TABLE easycases 
-                        ALTER COLUMN parent_task_id TYPE integer 
-                        USING parent_task_id::integer
+                        MODIFY parent_task_id INT NULL
                     ");
                 }
                 // If already integer type, no conversion needed
@@ -113,15 +112,16 @@ class FixMySQLToPostgresDataTypes extends AbstractMigration
             }
         }
 
-        // 5. Change work_hour to float8 (if table exists)
+        // 5. Change work_hour to double (if table exists)
         if ($this->hasTable('companies')) {
             $companiesTable = $this->table('companies');
             if ($companiesTable->hasColumn('work_hour')) {
                 // Check if column is varchar type (from MySQL migration)
                 $columnType = $this->fetchRow("
-                    SELECT data_type 
-                    FROM information_schema.columns 
-                    WHERE table_name = 'companies' 
+                    SELECT data_type AS data_type
+                    FROM information_schema.columns
+                    WHERE table_schema = DATABASE()
+                    AND table_name = 'companies' 
                     AND column_name = 'work_hour'
                 ");
                 
@@ -129,26 +129,25 @@ class FixMySQLToPostgresDataTypes extends AbstractMigration
                     // Clean up empty/null values first for varchar columns
                     $this->execute("UPDATE companies SET work_hour = '0' WHERE work_hour = '' OR work_hour IS NULL");
                     
-                    // Use USING clause for PostgreSQL type conversion
                     $this->execute("
                         ALTER TABLE companies 
-                        ALTER COLUMN work_hour TYPE double precision 
-                        USING work_hour::double precision
+                        MODIFY work_hour DOUBLE NULL
                     ");
                 }
                 // If already numeric type, no conversion needed
             }
         }
 
-        // 6. Change test_runs.assignee_id to int8 (biginteger) - if table exists
+        // 6. Change test_runs.assignee_id to bigint - if table exists
         if ($this->hasTable('test_runs')) {
             $testRunsTable = $this->table('test_runs');
             if ($testRunsTable->hasColumn('assignee_id')) {
                 // Check if column is varchar type (from MySQL migration)
                 $columnType = $this->fetchRow("
-                    SELECT data_type 
-                    FROM information_schema.columns 
-                    WHERE table_name = 'test_runs' 
+                    SELECT data_type AS data_type
+                    FROM information_schema.columns
+                    WHERE table_schema = DATABASE()
+                    AND table_name = 'test_runs' 
                     AND column_name = 'assignee_id'
                 ");
                 
@@ -156,18 +155,16 @@ class FixMySQLToPostgresDataTypes extends AbstractMigration
                     // Clean up empty/null values first for varchar columns
                     $this->execute("UPDATE test_runs SET assignee_id = '0' WHERE assignee_id = '' OR assignee_id IS NULL");
                     
-                    // Use USING clause for PostgreSQL type conversion
                     $this->execute("
                         ALTER TABLE test_runs 
-                        ALTER COLUMN assignee_id TYPE bigint 
-                        USING assignee_id::bigint
+                        MODIFY assignee_id BIGINT NULL
                     ");
                 }
                 // If already numeric type, no conversion needed
             }
         }
 
-        // 7. Change role_rates columns to float8 (if table exists)
+        // 7. Change role_rates columns to double (if table exists)
         if ($this->hasTable('role_rates')) {
             $roleRatesTable = $this->table('role_rates');
             
@@ -175,9 +172,10 @@ class FixMySQLToPostgresDataTypes extends AbstractMigration
             if ($roleRatesTable->hasColumn('rate')) {
                 // Check if column is varchar type
                 $columnType = $this->fetchRow("
-                    SELECT data_type 
-                    FROM information_schema.columns 
-                    WHERE table_name = 'role_rates' 
+                    SELECT data_type AS data_type
+                    FROM information_schema.columns
+                    WHERE table_schema = DATABASE()
+                    AND table_name = 'role_rates' 
                     AND column_name = 'rate'
                 ");
                 
@@ -186,8 +184,7 @@ class FixMySQLToPostgresDataTypes extends AbstractMigration
                     
                     $this->execute("
                         ALTER TABLE role_rates 
-                        ALTER COLUMN rate TYPE double precision 
-                        USING rate::double precision
+                        MODIFY rate DOUBLE NULL
                     ");
                 }
             }
@@ -196,9 +193,10 @@ class FixMySQLToPostgresDataTypes extends AbstractMigration
             if ($roleRatesTable->hasColumn('actual_rate')) {
                 // Check if column is varchar type
                 $columnType = $this->fetchRow("
-                    SELECT data_type 
-                    FROM information_schema.columns 
-                    WHERE table_name = 'role_rates' 
+                    SELECT data_type AS data_type
+                    FROM information_schema.columns
+                    WHERE table_schema = DATABASE()
+                    AND table_name = 'role_rates' 
                     AND column_name = 'actual_rate'
                 ");
                 
@@ -207,8 +205,7 @@ class FixMySQLToPostgresDataTypes extends AbstractMigration
                     
                     $this->execute("
                         ALTER TABLE role_rates 
-                        ALTER COLUMN actual_rate TYPE double precision 
-                        USING actual_rate::double precision
+                        MODIFY actual_rate DOUBLE NULL
                     ");
                 }
             }

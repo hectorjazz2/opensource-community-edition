@@ -3,6 +3,7 @@ FROM ubuntu:noble
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install PHP 8 + Apache + required extensions + runtime tools
+# (php8.3-pgsql is only needed by `bin/cake migrate_postgres_to_mysql`.)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         apache2 libapache2-mod-php8.3 \

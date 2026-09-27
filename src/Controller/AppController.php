@@ -713,7 +713,7 @@ class AppController extends Controller
                 ])
                 ->from(['ProjectUser' => 'project_users'])
                 ->innerJoin(['Projects' => 'projects'], [
-                    '"Projects".id = "ProjectUser".project_id',
+                    'Projects.id = ProjectUser.project_id',
                     'ProjectUser.user_id' => SES_ID,
                     'Projects.isactive' => 1,
                     'Projects.company_id' => SES_COMP,
@@ -1425,18 +1425,18 @@ class AppController extends Controller
                 $comp_id = SES_COMP;
                 $typeOrder = ($_SESSION['project_methodology'] ?? 'simple') === 'scrum'
                     ? [
-                        new QueryExpression('CASE WHEN "Types".seq_order = 0 THEN 0 ELSE 1 END'),
-                        new QueryExpression('CASE WHEN "Types".seq_order = 13 THEN 0 ELSE 1 END'),
-                        new QueryExpression('CASE WHEN "Types".seq_order = 14 THEN 0 ELSE 1 END'),
-                        new QueryExpression('CASE WHEN "Types".project_id = 0 THEN 0 ELSE 1 END DESC'),
-                        '"Types".seq_order' => 'ASC',
-                        '"Types".name' => 'ASC',
+                        new QueryExpression('CASE WHEN Types.seq_order = 0 THEN 0 ELSE 1 END'),
+                        new QueryExpression('CASE WHEN Types.seq_order = 13 THEN 0 ELSE 1 END'),
+                        new QueryExpression('CASE WHEN Types.seq_order = 14 THEN 0 ELSE 1 END'),
+                        new QueryExpression('CASE WHEN Types.project_id = 0 THEN 0 ELSE 1 END DESC'),
+                        'Types.seq_order' => 'ASC',
+                        'Types.name' => 'ASC',
                     ]
                     : [
-                        new QueryExpression('CASE WHEN "Types".seq_order = 0 THEN 0 ELSE 1 END'),
-                        new QueryExpression('CASE WHEN "Types".project_id = 0 THEN 1 ELSE 0 END'),
-                        '"Types".seq_order' => 'ASC',
-                        '"Types".name' => 'ASC',
+                        new QueryExpression('CASE WHEN Types.seq_order = 0 THEN 0 ELSE 1 END'),
+                        new QueryExpression('CASE WHEN Types.project_id = 0 THEN 1 ELSE 0 END'),
+                        'Types.seq_order' => 'ASC',
+                        'Types.name' => 'ASC',
                     ];
 
                 $query = $typeCompanyTable->find()
@@ -1469,18 +1469,18 @@ class AppController extends Controller
                 // Fallback to global types (company_id = 0) for multi-tenant support
                 $typeOrder = (($_SESSION['project_methodology'] ?? '') && $_SESSION['project_methodology'] == 'scrum') ?
                     [
-                        new QueryExpression('CASE WHEN "Types".seq_order = 0 THEN 0 ELSE 1 END'),
-                        new QueryExpression('CASE WHEN "Types".seq_order = 13 THEN 0 ELSE 1 END'),
-                        new QueryExpression('CASE WHEN "Types".seq_order = 14 THEN 0 ELSE 1 END'),
-                        new QueryExpression('CASE WHEN "Types".project_id = 0 THEN 0 ELSE 1 END DESC'),
-                        '"Types".seq_order' => 'ASC',
-                        '"Types".name' => 'ASC',
+                        new QueryExpression('CASE WHEN Types.seq_order = 0 THEN 0 ELSE 1 END'),
+                        new QueryExpression('CASE WHEN Types.seq_order = 13 THEN 0 ELSE 1 END'),
+                        new QueryExpression('CASE WHEN Types.seq_order = 14 THEN 0 ELSE 1 END'),
+                        new QueryExpression('CASE WHEN Types.project_id = 0 THEN 0 ELSE 1 END DESC'),
+                        'Types.seq_order' => 'ASC',
+                        'Types.name' => 'ASC',
                     ] :
                     [
-                        new QueryExpression('CASE WHEN "Types".seq_order = 0 THEN 0 ELSE 1 END'),
-                        new QueryExpression('CASE WHEN "Types".project_id = 0 THEN 1 ELSE 0 END'),
-                        '"Types".seq_order' => 'ASC',
-                        '"Types".name' => 'ASC',
+                        new QueryExpression('CASE WHEN Types.seq_order = 0 THEN 0 ELSE 1 END'),
+                        new QueryExpression('CASE WHEN Types.project_id = 0 THEN 1 ELSE 0 END'),
+                        'Types.seq_order' => 'ASC',
+                        'Types.name' => 'ASC',
                     ];
 
                 $query = $typeTable->find()

@@ -1312,13 +1312,13 @@ class EasycasesTable extends Table
 
     public function getTaskCountOfDefaultTaskGroup($projId, $searchFilters)
     {
-        $qryMilestone = ' "EasycaseMilestones".milestone_id IS NULL ';
+        $qryMilestone = ' EasycaseMilestones.milestone_id IS NULL ';
         if (!empty($searchFilters['qry'])) {
             $qryMilestone = $this->queryAnd([$qryMilestone, $searchFilters['qry']]);
         }
 
         $defaultTaskGroupQuery = $this->find()
-            ->select(['count' => $this->selectQuery()->func()->count('"Easycases".id')])
+            ->select(['count' => $this->selectQuery()->func()->count('Easycases.id')])
             ->join([
                 'table' => 'easycase_milestones',
                 'alias' => 'EasycaseMilestones',
@@ -3151,7 +3151,7 @@ class EasycasesTable extends Table
 
         $totalEstimated = $this->find()
             ->select([
-                'estimated_hours' => '( SUM("Easycases".estimated_hours) )'
+                'estimated_hours' => '( SUM(Easycases.estimated_hours) )'
             ])
             ->where([
                 fn($exp) => $exp->in('Easycases.project_id', $subquery),
@@ -4272,12 +4272,17 @@ class EasycasesTable extends Table
             ->order(['Users.name' => 'ASC']);
 
         if ($searchVal) {
+            // LIKE is case-insensitive under the utf8mb4_unicode_ci collation.
             $like = '%' . trim($searchVal) . '%';
+            $fullName = $query->func()->concat([
+                'Users.name' => 'identifier',
+                ' ',
+                $query->func()->coalesce(['Users.last_name' => 'identifier', '']),
+            ]);
             $query->andWhere(fn($exp) => $exp->or([
-                'Users.name ILIKE' => $like,
-                'Users.last_name ILIKE' => $like,
-                '("Users"."name" || \' \' || COALESCE("Users"."last_name", \'\')) ILIKE' => $like,
-            ]));
+                'Users.name LIKE' => $like,
+                'Users.last_name LIKE' => $like,
+            ])->like($fullName, $like));
         }
 
         $rows = $query->disableHydration()->toArray();
@@ -4307,7 +4312,7 @@ class EasycasesTable extends Table
             ]);
 
         if ($searchVal) {
-            $caseLists->andWhere(['Easycases.title ILIKE' => '%' . trim($searchVal) . '%']);
+            $caseLists->andWhere(['Easycases.title LIKE' => '%' . trim($searchVal) . '%']);
         }
 
         $caseLists = $caseLists->toArray();
@@ -5006,7 +5011,7 @@ class EasycasesTable extends Table
             ->count();
 
         $breached_total = $this->find()
-            ->select(['breached_hours' => '(SUM(DATEDIFF(DAY, due_date, dt_closed)))'])
+            ->select(['breached_hours' => '(SUM(DATEDIFF(dt_closed, due_date)))'])
             ->disableHydration()
             ->disableResultsCasting()
             ->where($common_cond + ['due_date < dt_closed'])

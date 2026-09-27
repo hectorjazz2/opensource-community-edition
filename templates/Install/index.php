@@ -96,8 +96,8 @@ if ($is_reinstall) {
     <label>Port</label>
     <?= $this->Form->control('Database.port', [
         'type' => 'text',
-        'placeholder' => '5432',
-        'value' => $database_config['port'] ?? '5432',
+        'placeholder' => '3306',
+        'value' => $database_config['port'] ?? '3306',
         'autocomplete' => 'off',
         'label' => false,
         'class' => 'form-control'

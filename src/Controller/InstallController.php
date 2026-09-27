@@ -228,16 +228,16 @@ class InstallController extends AppController
         $is_docker = $this->checkServer();
         $default_database_config = [
             'database' => 'orangescrum',
-            'host' => $is_docker ? 'orangescrum-postgres' : 'localhost',
-            'port' => 5432,
+            'host' => $is_docker ? 'orangescrum-mysql' : 'localhost',
+            'port' => 3306,
             'user' => 'orangescrum',
             'pass' => 'orangescrum'
         ];
 
-        $postgres_config = [
+        $mysql_config = [
             'className' => 'Cake\Database\Connection',
-            'driver' => 'Cake\Database\Driver\Postgres',
-            'encoding' => 'utf8',
+            'driver' => 'Cake\Database\Driver\Mysql',
+            'encoding' => 'utf8mb4',
             'timezone' => 'UTC',
         ];
 
@@ -253,7 +253,7 @@ class InstallController extends AppController
             switch ($step) {
                 case 1:
                     $database_config = $this->request->getData('Database');
-                    $database_config = array_merge($database_config, $postgres_config);
+                    $database_config = array_merge($database_config, $mysql_config);
                     $session->write('DatabaseConfig', $database_config);
                     $connected = $this->connectToDatabase($database_config);
 
@@ -420,11 +420,9 @@ class InstallController extends AppController
         try {
             // Create database tables
             $this->createDatabaseTables($database_config);
-            
-            // Disable GENERATED ALWAYS, insert data, re-enable and fix sequences
-            $this->disablePrimiaryKeyCheck($database_config);
+
+            // Seeders insert explicit ids; AUTO_INCREMENT moves past them on its own.
             $this->insertInitialData($database_config);
-            $this->enablePrimiaryKeyCheck($database_config);
 
             return true;
         } catch (\Exception $e) {
@@ -436,61 +434,6 @@ class InstallController extends AppController
             if (ConnectionManager::getConfig('install_migration')) {
                 ConnectionManager::drop('install_migration');
             }
-        }
-    }
-
-    private function disablePrimiaryKeyCheck($database_config)
-    {
-        set_time_limit(0);
-        $this->createMigrations($database_config);
-
-        try {
-            $connection = ConnectionManager::get('install_migration');
-            $schemaPath = CONFIG . DS . 'schema' . DS;
-
-            // config/schema/pg_config_1.sql - Disable GENERATED ALWAYS on identity columns
-
-            $sqlFiles = glob($schemaPath . 'pg_config_1.sql');
-
-            foreach ($sqlFiles as $sqlFile) {
-                if (file_exists($sqlFile)) {
-                    $sql = file_get_contents($sqlFile);
-                    $connection->execute($sql);
-                }
-            }
-
-            $this->log(__('Primary key constraints disabled successfully.'), 'info');
-        } catch (\Exception $e) {
-            $this->log(__('Failed to disable primary key constraints: ') . $e->getMessage(), 'error');
-
-            throw $e;
-        }
-    }
-    private function enablePrimiaryKeyCheck($database_config)
-    {
-        set_time_limit(0);
-        $this->createMigrations($database_config);
-
-        try {
-            $connection = ConnectionManager::get('install_migration');
-            $schemaPath = CONFIG . DS . 'schema' . DS;
-
-            // config/schema/pg_config_2.sql - Re-enable GENERATED ALWAYS and fix sequences
-
-            $sqlFiles = glob($schemaPath . 'pg_config_2.sql');
-
-            foreach ($sqlFiles as $sqlFile) {
-                if (file_exists($sqlFile)) {
-                    $sql = file_get_contents($sqlFile);
-                    $connection->execute($sql);
-                }
-            }
-
-            $this->log(__('Primary key constraints re-enabled and sequences fixed successfully.'), 'info');
-        } catch (\Exception $e) {
-            $this->log(__('Failed to re-enable primary key constraints: ') . $e->getMessage(), 'error');
-
-            throw $e;
         }
     }
 
@@ -532,7 +475,7 @@ class InstallController extends AppController
         try {
             $this->log(__('Creating database tables for fresh installation...'), 'info');
             
-            // TODO: V2->V3 upgrade migrations (FixMySQLToPostgresDataTypes, ApplyCake2To4Updates,
+            // TODO: V2->V3 upgrade migrations (FixLegacyDataTypes, ApplyCake2To4Updates,
             // AddV2ToV3SchemaChanges, AddV2ToV3NewTables) have been moved to config/Migrations/_upgrade_only/.
             // They are only needed for upgrading from very old packages and are not part of the fresh install flow.
             // A separate upgrade tool should handle those if needed.
@@ -565,14 +508,11 @@ class InstallController extends AppController
         try {
             // Step 1: Run upgrade migrations (includes datatype conversions)
             $this->runUpgradeMigrations($database_config);
-            
-            // Step 2: Fix primary key sequences (important for MySQL imports)
-            $this->fixPrimaryKeySequences($database_config);
-            
-            // Step 3: Update any necessary stored procedures
+
+            // Step 2: Update any necessary stored procedures
             // $this->importProcedures($database_config);
 
-            // Step 4: Run plugin migrations (Phinx skips already-run ones via phinxlog)
+            // Step 3: Run plugin migrations (Phinx skips already-run ones via phinxlog)
             $this->runPluginUpgradeMigrations($database_config);
 
             return true;
@@ -615,7 +555,7 @@ class InstallController extends AppController
             
             // All upgrade migrations in order (including datatype fixes)
             $v2ToV3Migrations = [
-                '20251125100120', // FixMySQLToPostgresDataTypes
+                '20251125100120', // FixLegacyDataTypes
                 '20251125100125', // ApplyCake2To4Updates  
                 '20251125100132', // AddV2ToV3SchemaChanges
                 '20251125100142', // AddV2ToV3NewTables
@@ -725,73 +665,31 @@ class InstallController extends AppController
         return false; // V3 migrations not found = V2 database
     }
 
-    /**
-     * Fix primary key sequences after MySQL to PostgreSQL migration
-     * This is critical when tables are copied from MySQL
-     */
-    private function fixPrimaryKeySequences($database_config)
-    {
-        set_time_limit(0);
-        $this->createMigrations($database_config);
-
-        try {
-            $connection = ConnectionManager::get('install_migration');
-            $schemaPath = CONFIG . DS . 'schema' . DS;
-            
-            $this->log(__('Fixing primary key sequences...'), 'info');
-            
-            // First, disable GENERATED ALWAYS constraint
-            $configFile1 = $schemaPath . 'pg_config_1.sql';
-            if (file_exists($configFile1)) {
-                $sql = file_get_contents($configFile1);
-                $connection->execute($sql);
-                $this->log(__('Disabled GENERATED ALWAYS constraints.'), 'debug');
-            }
-            
-            // Then, reset all sequences to match current max values
-            $configFile2 = $schemaPath . 'pg_config_2.sql';
-            if (file_exists($configFile2)) {
-                $sql = file_get_contents($configFile2);
-                $connection->execute($sql);
-                $this->log(__('Reset all primary key sequences to correct values.'), 'info');
-            }
-        } catch (\Exception $e) {
-            $this->log(__('Failed to fix primary key sequences: ') . $e->getMessage(), 'error');
-            // Don't throw - this is a non-critical fix
-        } finally {
-            if (ConnectionManager::getConfig('install_migration')) {
-                ConnectionManager::drop('install_migration');
-            }
-        }
-    }
-
     private function insertInitialData($database_config)
     {
         set_time_limit(0);
         $migrations = $this->createMigrations($database_config);
 
         try {
-            // For PostgreSQL with GENERATED ALWAYS identity columns, we need to temporarily
-            // disable the constraint to allow explicit ID inserts from seed data
             $connection = ConnectionManager::get('install_migration');
-            
-            // Disable GENERATED ALWAYS for all identity columns temporarily
             $this->log(__('Preparing database for seed data insertion...'), 'debug');
-            $this->disablePrimiaryKeyCheck($database_config);
 
             // Truncate tables that migrations pre-populated to avoid duplicate key
             // conflicts when seeders insert the same rows with explicit IDs.
+            // TRUNCATE also resets AUTO_INCREMENT.
             $conflictTables = ['actions', 'menus', 'modules', 'role_actions', 'role_modules'];
-            foreach ($conflictTables as $tbl) {
-                $connection->execute("TRUNCATE TABLE {$tbl} RESTART IDENTITY CASCADE");
+            $connection->execute('SET FOREIGN_KEY_CHECKS = 0');
+            try {
+                foreach ($conflictTables as $tbl) {
+                    $connection->execute("TRUNCATE TABLE `{$tbl}`");
+                }
+            } finally {
+                $connection->execute('SET FOREIGN_KEY_CHECKS = 1');
             }
             $this->log(__('Truncated migration-seeded tables before running seeders.'), 'debug');
 
             // Run seed data
             $migrations->seed();
-
-            // Fix sequences after core seeds so plugin seeds can use auto-generated IDs
-            $this->fixCoreSequences($connection);
 
             // Run seeds for plugins that have them
             $pluginSeeds = [];
@@ -805,33 +703,11 @@ class InstallController extends AppController
                 }
             }
 
-            // Re-enable GENERATED ALWAYS and fix sequences
-            $this->enablePrimiaryKeyCheck($database_config);
-
             $this->log(__('Initial data inserted successfully.'), 'info');
         } catch (\Exception $e) {
             $this->log(__('Failed to insert initial data: ') . $e->getMessage(), 'error');
 
             throw $e;
-        }
-    }
-
-
-    /**
-     * Fix sequences for core RBAC tables after seed data insertion.
-     * Required so plugin seeders can safely use auto-generated IDs.
-     */
-    private function fixCoreSequences($connection): void
-    {
-        $tables = ['modules', 'actions', 'role_modules', 'role_actions', 'types', 'type_companies'];
-        foreach ($tables as $table) {
-            try {
-                $connection->execute(
-                    "SELECT setval('{$table}_id_seq', (SELECT COALESCE(MAX(id), 1) FROM {$table}))"
-                );
-            } catch (\Exception $e) {
-                $this->log("Sequence fix skipped for {$table}: " . $e->getMessage(), 'debug');
-            }
         }
     }
 
@@ -921,7 +797,8 @@ class InstallController extends AppController
                 'port' => $database_config['port'],
                 'username' => $database_config['user'],
                 'password' => $database_config['pass'],
-                'database' => 'postgres',
+                // Connect to the server only; the target database may not exist yet.
+                'database' => '',
                 'encoding' => $database_config['encoding'],
                 'timezone' => $database_config['timezone'],
                 'flags' => [],
@@ -1036,21 +913,18 @@ class InstallController extends AppController
     private function checkAndCreateDatabase($database_config)
     {
         $connection = ConnectionManager::get('install');
-        // Check if the database exists in PostgreSQL
         $dbExists = $connection->execute(
-            'SELECT 1 FROM pg_database WHERE datname = ?',
+            'SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?',
             [$database_config['database']]
         )->fetch();
 
         if ($dbExists) {
-            // Database exists — connect directly to it to check if it has tables
+            // Database exists — check whether it already has tables
             try {
-                $targetDsn = sprintf('pgsql:host=%s;port=%s;dbname=%s',
-                    $database_config['host'], $database_config['port'] ?? '5432', $database_config['database']);
-                $targetPdo = new \PDO($targetDsn, $database_config['user'], $database_config['pass']);
-                $stmt = $targetPdo->query("SELECT tablename FROM pg_tables WHERE schemaname = 'public'");
-                $tables = $stmt->fetchAll();
-                $targetPdo = null;
+                $tables = $connection->execute(
+                    "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE'",
+                    [$database_config['database']]
+                )->fetchAll();
             } catch (\Exception $e) {
                 $tables = [];
             }
@@ -1079,19 +953,16 @@ class InstallController extends AppController
     private function createDatabase($connection, $database_config)
     {
         try {
-            // PostgreSQL does not allow CREATE DATABASE inside a transaction block
-            // So we need to disconnect and reconnect if necessary
-            $connection->getDriver()->disconnect();
-            $sql = 'CREATE DATABASE ' . $connection->getDriver()->quoteIdentifier($database_config['database']);
-            $connection->getDriver()->connect();
+            $sql = 'CREATE DATABASE ' . $connection->getDriver()->quoteIdentifier($database_config['database'])
+                . ' CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
             $connection->execute($sql);
             $this->Flash->success(__('Database created successfully.'));
 
             return true;
         } catch (\PDOException $e) {
-            $errorCode = $e->getCode();
+            $errorCode = $e->errorInfo[1] ?? null;
             switch ($errorCode) {
-                case '42P04': // duplicate_database
+                case 1007: // ER_DB_CREATE_EXISTS
                     $this->Flash->error(sprintf(
                         '%s %s %s',
                         __('The database already exists.'),
@@ -1099,7 +970,7 @@ class InstallController extends AppController
                         __('Try using a unique name to avoid conflicts.')
                     ));
                     break;
-                case '42501': // insufficient_privilege
+                case 1044: // ER_DBACCESS_DENIED_ERROR
                     $this->Flash->error(sprintf(
                         '%s %s %s',
                         __('Access denied.'),
@@ -1107,7 +978,7 @@ class InstallController extends AppController
                         __('Please contact your database administrator for assistance.')
                     ));
                     break;
-                case '53100': // disk_full
+                case 1021: // ER_DISK_FULL
                     $this->Flash->error(sprintf(
                         '%s %s %s',
                         __('Cannot create database.'),
@@ -1128,27 +999,32 @@ class InstallController extends AppController
     }
 
     /**
-     * Erase every object in the target database's public schema so a clean
-     * reinstall starts from an empty slate. Used by the "clean reinstall"
-     * option when the database already contains tables.
+     * Drop every table and view in the target database so a clean reinstall
+     * starts from an empty slate. Used by the "clean reinstall" option when
+     * the database already contains tables. The database itself is kept, so
+     * this works for users who can't create databases.
      */
     private function dropDatabaseTables($database_config)
     {
         try {
             $dsn = sprintf(
-                'pgsql:host=%s;port=%s;dbname=%s',
+                'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
                 $database_config['host'],
-                $database_config['port'] ?? '5432',
+                $database_config['port'] ?? '3306',
                 $database_config['database']
             );
             $pdo = new \PDO($dsn, $database_config['user'], $database_config['pass']);
             $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 
-            $pdo->exec('DROP SCHEMA public CASCADE');
-            $pdo->exec('CREATE SCHEMA public');
-            $owner = '"' . str_replace('"', '""', $database_config['user']) . '"';
-            $pdo->exec('GRANT ALL ON SCHEMA public TO ' . $owner);
-            $pdo->exec('GRANT ALL ON SCHEMA public TO public');
+            $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
+            $objects = $pdo->query(
+                'SELECT TABLE_NAME, TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()'
+            )->fetchAll(\PDO::FETCH_NUM);
+            foreach ($objects as [$name, $type]) {
+                $quoted = '`' . str_replace('`', '``', $name) . '`';
+                $pdo->exec(($type === 'VIEW' ? 'DROP VIEW IF EXISTS ' : 'DROP TABLE IF EXISTS ') . $quoted);
+            }
+            $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
             $pdo = null;
 
             $this->log(__('Existing schema erased for clean reinstall.'), 'info');
@@ -1159,7 +1035,7 @@ class InstallController extends AppController
             $this->Flash->error(sprintf(
                 '%s %s',
                 __('Could not erase the existing database.'),
-                __('Please ensure the database user can drop the public schema, then try again.')
+                __('Please ensure the database user can drop tables in this database, then try again.')
             ));
 
             return false;

@@ -3254,7 +3254,7 @@ class UsersController extends AppController
         if ($isCompanyUser) {
             $count1 = $this->request->getData('count', 0);
             $name = trim($this->request->getData('name', ''));
-            $searchQuery = $name ? ["name LIKE '%" . str_replace("'", "''", (string)$name) . "%'"] : [];
+            $searchQuery = $name ? ["name LIKE '%" . str_replace(['\\', "'"], ['\\\\', "''"], (string)$name) . "%'"] : [];
 
             $projectUsersTable = $this->fetchTable('ProjectUsers');
             $projectsTable = $this->fetchTable('Projects');
@@ -4596,7 +4596,7 @@ class UsersController extends AppController
                 $emaillist[] = $emailids;
             }
             // Nothing to check. Without this the query below builds `IN ()`,
-            // which PostgreSQL rejects, and the caller gets a 503 telling it
+            // which MySQL rejects as a syntax error, and the caller gets a 503 telling it
             // the database is unreachable.
             if ($emaillist === []) {
                 return $this->jsonResponse(json_encode(['status' => 1]));
@@ -4614,10 +4614,8 @@ class UsersController extends AppController
                         ]);
                 })
                 ->where([
-                    // Key/value form, not a raw string: PostgreSQL case-folds an
-                    // unquoted `Users` to `users`, which does not match the quoted
-                    // alias, and the query dies with "invalid reference to
-                    // FROM-clause entry".
+                    // Key/value form, not a raw string, so the identifiers are
+                    // quoted the same way as the query's own aliases.
                     'Users.email IS NOT' => null,
                     'Users.email IN' => $emaillist,
                 ])

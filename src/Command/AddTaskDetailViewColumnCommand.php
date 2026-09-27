@@ -37,7 +37,7 @@ use Exception;
  *
  * Adds the `task_detail_view` column to `default_task_views`, which stores the
  * per-user task-detail custom-field layout preference ('tab' or 'side').
- * Idempotent — safe to run on any database state (uses ADD COLUMN IF NOT EXISTS).
+ * Idempotent — safe to run on any database state (checks information_schema first).
  * Intended for manual runs on deploy.
  *
  * Usage:
@@ -89,7 +89,7 @@ class AddTaskDetailViewColumnCommand extends Command
 
             $connection->execute(
                 "ALTER TABLE default_task_views " .
-                "ADD COLUMN IF NOT EXISTS task_detail_view varchar(10) NOT NULL DEFAULT 'tab'"
+                "ADD COLUMN task_detail_view varchar(10) NOT NULL DEFAULT 'tab'"
             );
 
             if (!$this->columnExists($connection)) {
@@ -139,7 +139,7 @@ class AddTaskDetailViewColumnCommand extends Command
     {
         $rows = $connection->execute(
             "SELECT column_name FROM information_schema.columns " .
-            "WHERE table_name = 'default_task_views' AND column_name = 'task_detail_view'"
+            "WHERE table_schema = DATABASE() AND table_name = 'default_task_views' AND column_name = 'task_detail_view'"
         )->fetchAll('assoc');
 
         return !empty($rows);
