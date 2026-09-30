@@ -10,8 +10,8 @@ use RuntimeException;
  * Copies one table at a time from the old CakePHP 2 database into the new
  * schema, following the rules in LegacyTableMap.
  *
- * Works on raw rows (no ORM), keeps the row IDs, and never writes to the
- * legacy connection.
+ * Works on raw rows (no ORM), keeps the primary keys, and never writes to
+ * the legacy connection.
  */
 class LegacyImporter
 {
@@ -77,13 +77,22 @@ class LegacyImporter
 
         $used = array_merge(array_values($copy), array_keys($rename));
         $oldOnly = array_values(array_diff(array_keys($sourceCols), $used));
-        if (!isset($sourceCols['id'])) {
+
+        // Single-column primary key of the old table (usually `id`,
+        // `log_id` for log_times). Needed for chunked reads and side tables.
+        $keys = array_keys(array_filter($sourceCols, fn(array $c) => $c['primary']));
+        $key = count($keys) === 1 ? $keys[0] : null;
+        if ($key === null || !isset($targetCols[$key])) {
             $def['legacy'] = false;
+        }
+        if ($key === null && ($def['mode'] ?? 'replace') === 'merge') {
+            throw new RuntimeException("`{$sourceTable}` has no single-column primary key, merge mode is not possible.");
         }
 
         return [
             'table' => $table,
             'source' => $sourceTable,
+            'key' => $key,
             'sourceCols' => $sourceCols,
             'targetCols' => $targetCols,
             'copy' => $copy,
@@ -131,7 +140,7 @@ class LegacyImporter
             // Keep the rows that came with the new version, replace only the
             // rows with the ids being imported.
             foreach (array_chunk($this->sourceIds($plan), 1000) as $ids) {
-                $this->target->execute("DELETE FROM `{$table}` WHERE id IN (" . implode(',', $ids) . ')');
+                $this->target->execute("DELETE FROM `{$table}` WHERE `{$plan['key']}` IN (" . implode(',', $ids) . ')');
             }
         } elseif ($truncate) {
             $this->target->execute("TRUNCATE TABLE `{$table}`");
@@ -141,7 +150,7 @@ class LegacyImporter
         }
 
         $targetColumns = array_merge(array_keys($plan['copy']), $plan['defaults'], $plan['fallback']);
-        $legacyColumns = array_merge(['id'], $plan['oldOnly']);
+        $legacyColumns = array_merge([$plan['key']], $plan['oldOnly']);
         $inserted = 0;
         $legacyInserted = 0;
 
@@ -189,7 +198,7 @@ class LegacyImporter
         $target = 0;
         if ($plan['mode'] === 'merge') {
             foreach (array_chunk($this->sourceIds($plan), 1000) as $ids) {
-                $target += (int)$this->target->execute("SELECT COUNT(*) FROM `{$plan['table']}` WHERE id IN (" . implode(',', $ids) . ')')->fetchColumn(0);
+                $target += (int)$this->target->execute("SELECT COUNT(*) FROM `{$plan['table']}` WHERE `{$plan['key']}` IN (" . implode(',', $ids) . ')')->fetchColumn(0);
             }
         } else {
             $target = (int)$this->target->execute("SELECT COUNT(*) FROM `{$plan['table']}`")->fetchColumn(0);
@@ -246,8 +255,8 @@ class LegacyImporter
         $row = [];
         foreach ($columns as $name) {
             $col = $plan['sourceCols'][$name];
-            $col['required'] = $name === 'id';
-            $col['nullable'] = $name !== 'id';
+            $col['required'] = $name === $plan['key'];
+            $col['nullable'] = $name !== $plan['key'];
             $row[$name] = $this->normalize($old[$name], $col);
         }
 
@@ -302,18 +311,19 @@ class LegacyImporter
     {
         $table = $plan['source'];
         $filter = $plan['where'] ? " AND ({$plan['where']})" : '';
-        if (isset($plan['sourceCols']['id'])) {
+        $key = $plan['key'];
+        if ($key !== null && in_array($plan['sourceCols'][$key]['type'], self::NUMERIC_TYPES, true)) {
             $lastId = PHP_INT_MIN;
             while (true) {
                 $rows = $this->source->execute(
-                    "SELECT * FROM `{$table}` WHERE id > ?{$filter} ORDER BY id LIMIT " . self::READ_CHUNK,
+                    "SELECT * FROM `{$table}` WHERE `{$key}` > ?{$filter} ORDER BY `{$key}` LIMIT " . self::READ_CHUNK,
                     [$lastId]
                 )->fetchAll('assoc');
                 if (!$rows) {
                     return;
                 }
                 yield $rows;
-                $lastId = (int)end($rows)['id'];
+                $lastId = (int)end($rows)[$key];
             }
         }
 
@@ -368,7 +378,7 @@ class LegacyImporter
      */
     private function sourceIds(array $plan): array
     {
-        $rows = $this->source->execute("SELECT id FROM `{$plan['source']}`" . self::whereSql($plan['where']))->fetchAll('num');
+        $rows = $this->source->execute("SELECT `{$plan['key']}` FROM `{$plan['source']}`" . self::whereSql($plan['where']))->fetchAll('num');
 
         return array_map(fn($row) => (int)$row[0], $rows);
     }
@@ -391,11 +401,12 @@ class LegacyImporter
      */
     private function createLegacyTable(string $legacyTable, array $plan): void
     {
-        $defs = ['`id` INT NOT NULL'];
+        $key = $plan['key'];
+        $defs = ["`{$key}` {$plan['sourceCols'][$key]['columnType']} NOT NULL"];
         foreach ($plan['oldOnly'] as $name) {
             $defs[] = "`{$name}` {$plan['sourceCols'][$name]['columnType']} NULL";
         }
-        $defs[] = 'PRIMARY KEY (`id`)';
+        $defs[] = "PRIMARY KEY (`{$key}`)";
 
         $this->target->execute("DROP TABLE IF EXISTS `{$legacyTable}`");
         $this->target->execute(
@@ -416,7 +427,7 @@ class LegacyImporter
     {
         $rows = $connection->execute(
             'SELECT COLUMN_NAME AS name, DATA_TYPE AS type, COLUMN_TYPE AS columnType, IS_NULLABLE AS nullable,
-                    COLUMN_DEFAULT AS dflt, EXTRA AS extra, CHARACTER_MAXIMUM_LENGTH AS maxLength
+                    COLUMN_DEFAULT AS dflt, EXTRA AS extra, CHARACTER_MAXIMUM_LENGTH AS maxLength, COLUMN_KEY AS colKey
              FROM information_schema.COLUMNS
              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
              ORDER BY ORDINAL_POSITION',
@@ -436,6 +447,7 @@ class LegacyImporter
                 'nullable' => $nullable,
                 'required' => !$nullable && $row['dflt'] === null && stripos((string)$row['extra'], 'auto_increment') === false,
                 'maxLength' => $row['maxLength'] !== null ? (int)$row['maxLength'] : null,
+                'primary' => $row['colKey'] === 'PRI',
             ];
         }
 

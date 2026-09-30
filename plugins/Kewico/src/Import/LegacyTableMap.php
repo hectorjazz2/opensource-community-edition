@@ -35,9 +35,11 @@ class LegacyTableMap
     public const GROUPS = [
         'accounts' => ['companies', 'users', 'company_users', 'projects', 'project_users'],
         'projects' => ['status_groups', 'custom_statuses', 'types', 'type_companies', 'easycases'],
+        'files' => ['case_files', 'log_times', 'labels', 'easycase_labels'],
         'all' => [
             'companies', 'users', 'company_users', 'projects', 'project_users',
             'status_groups', 'custom_statuses', 'types', 'type_companies', 'easycases',
+            'case_files', 'log_times', 'labels', 'easycase_labels',
         ],
     ];
 
@@ -217,6 +219,48 @@ class LegacyTableMap
                 },
                 'legacy' => true,
             ],
+
+            // File rows only. The files themselves stay in
+            // app/webroot/files/case_files/ on the server and are copied to
+            // webroot/files/case_files/ of the new system separately.
+            // Kewico-only: is_internal (internal files) and file_status
+            // (lock / draft / approved) go to kewico_legacy_case_files.
+            'case_files' => [
+                'lookups' => [
+                    'cases' => 'SELECT id, dt_created FROM easycases',
+                ],
+                'defaults' => [
+                    'created' => null,
+                    'modified' => null,
+                ],
+                'transform' => function (array $new, array $old, array $lookups): array {
+                    // The old table has no dates; use the date of its project or comment.
+                    $created = $lookups['cases'][$old['easycase_id']]['dt_created'] ?? null;
+                    $new['created'] = $created;
+                    $new['modified'] = $created;
+
+                    return $new;
+                },
+                'legacy' => true,
+            ],
+
+            // Time logs. Kewico-only: approver_id and pending_status (time
+            // sheet approval) go to kewico_legacy_log_times.
+            'log_times' => [
+                'defaults' => [
+                    'is_from_timer' => 0,
+                ],
+                'legacy' => true,
+            ],
+
+            // Labels are company-wide in the old system (project_id 0).
+            'labels' => [
+                'defaults' => [
+                    'project_id' => 0,
+                ],
+            ],
+
+            'easycase_labels' => [],
         ];
     }
 
