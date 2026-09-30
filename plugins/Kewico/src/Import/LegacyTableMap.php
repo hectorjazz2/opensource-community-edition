@@ -34,7 +34,8 @@ class LegacyTableMap
      */
     public const GROUPS = [
         'accounts' => ['companies', 'users', 'company_users', 'projects', 'project_users'],
-        'projects' => ['status_groups', 'custom_statuses', 'types', 'type_companies', 'easycases'],
+        // Group names must not be table names: `--tables projects` means the table.
+        'cases' => ['status_groups', 'custom_statuses', 'types', 'type_companies', 'easycases'],
         'files' => ['case_files', 'log_times', 'labels', 'easycase_labels'],
         'all' => [
             'companies', 'users', 'company_users', 'projects', 'project_users',
@@ -203,6 +204,9 @@ class LegacyTableMap
                 'defaults' => [
                     'company_id' => self::COMPANY_ID,
                     'custom_status_id' => 0,
+                    // Number of replies, shown on the project. The old system
+                    // kept it in case_count; comments themselves have 0.
+                    'thread_count' => fn(array $old) => (int)$old['istype'] === 1 ? (int)$old['case_count'] : 0,
                 ],
                 'transform' => function (array $new, array $old, array $lookups): array {
                     $new['company_id'] = (int)($lookups['projects'][$old['project_id']]['company_id'] ?? self::COMPANY_ID);
@@ -227,7 +231,7 @@ class LegacyTableMap
             // (lock / draft / approved) go to kewico_legacy_case_files.
             'case_files' => [
                 'lookups' => [
-                    'cases' => 'SELECT id, dt_created FROM easycases',
+                    'cases' => 'SELECT id, dt_created FROM easycases WHERE id IN (SELECT easycase_id FROM case_files)',
                 ],
                 'defaults' => [
                     'created' => null,

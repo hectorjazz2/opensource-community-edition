@@ -18,7 +18,17 @@ bin/cake kewico import_legacy --truncate
 
 # Only some tables
 bin/cake kewico import_legacy --tables users,company_users --truncate
+
+# Everything (the switch-day command)
+bin/cake kewico import_legacy --tables all --truncate
 ```
+
+Groups for `--tables`: `accounts` (companies, users, memberships, accounts),
+`cases` (statuses, types, projects and comments), `files` (file rows, time
+logs, labels), `all`.
+
+Tables marked `merge` in the map (status groups, custom statuses, types) keep
+the rows that ship with the new version and replace only the imported ids.
 
 What the import does per table:
 

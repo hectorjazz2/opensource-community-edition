@@ -65,6 +65,12 @@ class ImportLegacyCommand extends Command
      */
     public function execute(Arguments $args, ConsoleIo $io): int
     {
+        // Lookups for the large tables (easycases, case_files) need more than
+        // the usual 128M CLI default.
+        if ((int)ini_get('memory_limit') !== -1 && $this->bytes((string)ini_get('memory_limit')) < 1024 ** 3) {
+            ini_set('memory_limit', '1G');
+        }
+
         $source = ConnectionManager::get((string)$args->getOption('source'));
         $target = ConnectionManager::get((string)$args->getOption('target'));
         $sourceDb = $source->config()['database'];
@@ -145,6 +151,25 @@ class ImportLegacyCommand extends Command
         $io->success('Import finished, all row counts match.');
 
         return static::CODE_SUCCESS;
+    }
+
+    /**
+     * @param string $value php.ini size, e.g. 128M
+     * @return int
+     */
+    private function bytes(string $value): int
+    {
+        $number = (int)$value;
+        switch (strtoupper(substr(trim($value), -1))) {
+            case 'G':
+                return $number * 1024 ** 3;
+            case 'M':
+                return $number * 1024 ** 2;
+            case 'K':
+                return $number * 1024;
+        }
+
+        return $number;
     }
 
     /**
