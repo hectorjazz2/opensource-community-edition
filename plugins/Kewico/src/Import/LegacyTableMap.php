@@ -52,6 +52,10 @@ class LegacyTableMap
      * ported later finds them where it expects them. `statuses` is not in the
      * list: it is converted into custom_statuses.
      *
+     * When a later step changes one of these tables in the new system (e.g. a
+     * migration adds a column), move it out of this list and give it a normal
+     * entry in tables(). The import refuses to re-copy a changed table.
+     *
      * @var array<string>
      */
     public const COPY_TABLES = [

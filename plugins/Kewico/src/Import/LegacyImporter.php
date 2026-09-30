@@ -412,6 +412,21 @@ class LegacyImporter
      */
     private function createCopyTable(array $plan): void
     {
+        // Once the ported Kewico code changes one of these tables (a new column
+        // through a migration), re-copying it would silently rebuild it with
+        // the old structure. Stop instead: that table then needs a normal
+        // mapping (replace mode) in LegacyTableMap.
+        $existing = $this->columns($this->target, $plan['table']);
+        if ($existing) {
+            $describe = fn(array $cols) => array_map(fn(array $c) => $c['columnType'] . ($c['nullable'] ? ' NULL' : ' NOT NULL'), $cols);
+            if ($describe($existing) !== $describe($plan['sourceCols'])) {
+                throw new RuntimeException(
+                    "`{$plan['table']}` has changed in the new system since it was copied "
+                    . '(columns differ from the old table). Map it in LegacyTableMap instead of copying it.'
+                );
+            }
+        }
+
         $ddl = $this->source->execute("SHOW CREATE TABLE `{$plan['source']}`")->fetch('num')[1];
         $ddl = preg_replace('/^CREATE TABLE `[^`]+`/', "CREATE TABLE `{$plan['table']}`", $ddl);
         // Column-level character sets and collations: the table default below applies.
