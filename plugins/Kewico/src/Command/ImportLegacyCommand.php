@@ -97,7 +97,7 @@ class ImportLegacyCommand extends Command
             return static::CODE_SUCCESS;
         }
 
-        $blocked = array_filter($plans, fn(array $p) => $p['targetRows'] > 0);
+        $blocked = array_filter($plans, fn(array $p) => $p['mode'] !== 'merge' && $p['targetRows'] > 0);
         if ($blocked && !$truncate) {
             $io->error('These target tables already have rows: ' . implode(', ', array_keys($blocked)) . '. Use --truncate to replace them.');
 
@@ -160,6 +160,9 @@ class ImportLegacyCommand extends Command
             $plan['sourceRows'],
             $plan['targetRows']
         ));
+        if ($plan['mode'] === 'merge') {
+            $io->out('  <warning>merge:</warning> rows with the imported ids are replaced, other rows are kept');
+        }
         if ($plan['where']) {
             $io->out("  <warning>only rows where:</warning> {$plan['where']}");
         }

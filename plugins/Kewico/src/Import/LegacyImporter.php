@@ -93,6 +93,7 @@ class LegacyImporter
             'oldOnly' => $oldOnly,
             'legacy' => !empty($def['legacy']) && $oldOnly,
             'where' => $def['where'] ?? null,
+            'mode' => $def['mode'] ?? 'replace',
             'sourceRows' => (int)$this->source->execute("SELECT COUNT(*) FROM `{$sourceTable}`" . self::whereSql($def['where'] ?? null))->fetchColumn(0),
             'targetRows' => (int)$this->target->execute("SELECT COUNT(*) FROM `{$table}`")->fetchColumn(0),
         ];
@@ -109,7 +110,8 @@ class LegacyImporter
     public function run(array $plan, array $def, bool $truncate): array
     {
         $table = $plan['table'];
-        if ($plan['targetRows'] > 0 && !$truncate) {
+        $merge = $plan['mode'] === 'merge';
+        if (!$merge && $plan['targetRows'] > 0 && !$truncate) {
             throw new RuntimeException("`{$table}` already has {$plan['targetRows']} rows. Use --truncate to replace them.");
         }
 
@@ -125,7 +127,13 @@ class LegacyImporter
         $this->target->execute("SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,NO_AUTO_VALUE_ON_ZERO'");
 
         $legacyTable = self::LEGACY_PREFIX . $table;
-        if ($truncate) {
+        if ($merge) {
+            // Keep the rows that came with the new version, replace only the
+            // rows with the ids being imported.
+            foreach (array_chunk($this->sourceIds($plan), 1000) as $ids) {
+                $this->target->execute("DELETE FROM `{$table}` WHERE id IN (" . implode(',', $ids) . ')');
+            }
+        } elseif ($truncate) {
             $this->target->execute("TRUNCATE TABLE `{$table}`");
         }
         if ($plan['legacy']) {
@@ -178,9 +186,18 @@ class LegacyImporter
             $legacy = (int)$this->target->execute("SELECT COUNT(*) FROM `{$legacyTable}`")->fetchColumn(0);
         }
 
+        $target = 0;
+        if ($plan['mode'] === 'merge') {
+            foreach (array_chunk($this->sourceIds($plan), 1000) as $ids) {
+                $target += (int)$this->target->execute("SELECT COUNT(*) FROM `{$plan['table']}` WHERE id IN (" . implode(',', $ids) . ')')->fetchColumn(0);
+            }
+        } else {
+            $target = (int)$this->target->execute("SELECT COUNT(*) FROM `{$plan['table']}`")->fetchColumn(0);
+        }
+
         return [
             'source' => (int)$this->source->execute("SELECT COUNT(*) FROM `{$plan['source']}`" . self::whereSql($plan['where']))->fetchColumn(0),
-            'target' => (int)$this->target->execute("SELECT COUNT(*) FROM `{$plan['table']}`")->fetchColumn(0),
+            'target' => $target,
             'legacy' => $legacy,
         ];
     }
@@ -341,6 +358,19 @@ class LegacyImporter
         }
 
         return $count;
+    }
+
+    /**
+     * Ids of the source rows that will be imported.
+     *
+     * @param array<string, mixed> $plan Result of plan()
+     * @return array<int>
+     */
+    private function sourceIds(array $plan): array
+    {
+        $rows = $this->source->execute("SELECT id FROM `{$plan['source']}`" . self::whereSql($plan['where']))->fetchAll('num');
+
+        return array_map(fn($row) => (int)$row[0], $rows);
     }
 
     /**

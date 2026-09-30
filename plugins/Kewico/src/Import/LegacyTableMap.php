@@ -34,7 +34,15 @@ class LegacyTableMap
      */
     public const GROUPS = [
         'accounts' => ['companies', 'users', 'company_users', 'projects', 'project_users'],
+        'projects' => ['status_groups', 'custom_statuses', 'types', 'type_companies', 'easycases'],
+        'all' => [
+            'companies', 'users', 'company_users', 'projects', 'project_users',
+            'status_groups', 'custom_statuses', 'types', 'type_companies', 'easycases',
+        ],
     ];
+
+    /** Kewico's company id in the old system. */
+    private const COMPANY_ID = 1;
 
     /**
      * @return array<string, array<string, mixed>>
@@ -118,6 +126,11 @@ class LegacyTableMap
             ],
 
             'projects' => [
+                // Old status workflow (19 Salesplan, 20 Installation Plan,
+                // 21 Plan Status) becomes the account's status group.
+                'defaults' => [
+                    'status_group_id' => fn(array $old) => (int)$old['workflow_id'],
+                ],
                 'legacy' => true,
             ],
 
@@ -126,7 +139,103 @@ class LegacyTableMap
                 'where' => 'user_id > 0 AND project_id > 0',
                 'legacy' => true,
             ],
+
+            // Old status workflows -> new status groups (same ids). The new
+            // version ships its own groups 1-6, which are kept.
+            'status_groups' => [
+                'source' => 'workflows',
+                'mode' => 'merge',
+                'defaults' => [
+                    'parent_id' => 0,
+                    'company_id' => self::COMPANY_ID,
+                    'description' => '',
+                    'created_by' => 0,
+                    'is_default' => 0,
+                    'created' => fn(array $old) => $old['dt_created'] ?? null,
+                    'modified' => fn(array $old) => $old['dt_created'] ?? null,
+                ],
+            ],
+
+            // Statuses of those workflows -> custom statuses (same ids, so
+            // easycases.legend can point at them). Statuses without a workflow
+            // are the standard base states (1, 2, 3, 5) or empty leftovers.
+            'custom_statuses' => [
+                'source' => 'statuses',
+                'mode' => 'merge',
+                'where' => 'workflow_id > 0',
+                'defaults' => [
+                    'company_id' => self::COMPANY_ID,
+                    'status_group_id' => fn(array $old) => (int)$old['workflow_id'],
+                    'progress' => fn(array $old) => (int)$old['percentage'],
+                    'color' => fn(array $old) => ltrim((string)$old['color'], '#'),
+                    'seq' => fn(array $old) => (int)$old['seq_order'],
+                    'status_master_id' => fn(array $old) => self::statusMaster($old),
+                    'created' => fn(array $old) => gmdate('Y-m-d H:i:s'),
+                    'modified' => fn(array $old) => gmdate('Y-m-d H:i:s'),
+                ],
+            ],
+
+            // Task types: 1-12 are the standard ones (same in both versions),
+            // 13-18 are Kewico's (Astronaut Salesplan, Barn Design, ...).
+            'types' => [
+                'mode' => 'merge',
+                'defaults' => [
+                    'project_id' => 0,
+                ],
+            ],
+
+            // Which types Kewico has switched on. Replaces the list the new
+            // version created at install.
+            'type_companies' => [
+                'defaults' => [
+                    'project_id' => 0,
+                ],
+            ],
+
+            // Projects (istype 1) and their comments (istype 2).
+            'easycases' => [
+                'lookups' => [
+                    'projects' => 'SELECT id, company_id FROM projects',
+                    'statuses' => 'SELECT id, name, percentage, seq_order FROM statuses WHERE workflow_id > 0',
+                ],
+                'defaults' => [
+                    'company_id' => self::COMPANY_ID,
+                    'custom_status_id' => 0,
+                ],
+                'transform' => function (array $new, array $old, array $lookups): array {
+                    $new['company_id'] = (int)($lookups['projects'][$old['project_id']]['company_id'] ?? self::COMPANY_ID);
+
+                    // Old: legend holds the workflow status id (e.g. 89).
+                    // New: custom_status_id holds it, legend the base state.
+                    $status = $lookups['statuses'][$old['legend']] ?? null;
+                    if ($status !== null) {
+                        $new['custom_status_id'] = (int)$status['id'];
+                        $new['legend'] = self::statusMaster($status);
+                    }
+
+                    return $new;
+                },
+                'legacy' => true,
+            ],
         ];
+    }
+
+    /**
+     * Base state of an old workflow status: 1 New, 2 In progress, 3 Closed.
+     *
+     * @param array<string, mixed> $status Old statuses row
+     * @return int
+     */
+    public static function statusMaster(array $status): int
+    {
+        if (strcasecmp(trim((string)$status['name']), 'New') === 0 || (int)$status['percentage'] === 0) {
+            return 1;
+        }
+        if (strcasecmp(trim((string)$status['name']), 'Completed') === 0 || (int)$status['percentage'] >= 100) {
+            return 3;
+        }
+
+        return 2;
     }
 
     /**
