@@ -37,11 +37,51 @@ class LegacyTableMap
         // Group names must not be table names: `--tables projects` means the table.
         'cases' => ['status_groups', 'custom_statuses', 'types', 'type_companies', 'easycases'],
         'files' => ['case_files', 'log_times', 'labels', 'easycase_labels'],
+        'kewico' => self::COPY_TABLES,
         'all' => [
             'companies', 'users', 'company_users', 'projects', 'project_users',
             'status_groups', 'custom_statuses', 'types', 'type_companies', 'easycases',
             'case_files', 'log_times', 'labels', 'easycase_labels',
+            ...self::COPY_TABLES,
         ],
+    ];
+
+    /**
+     * Tables that only exist in kewico_php8. Copied 1:1 with their old
+     * structure (as InnoDB / utf8mb4) and the same names, so the Kewico code
+     * ported later finds them where it expects them. `statuses` is not in the
+     * list: it is converted into custom_statuses.
+     *
+     * @var array<string>
+     */
+    public const COPY_TABLES = [
+        // AI Compliance Checker
+        'ai_check_inputs', 'ai_check_logs', 'ai_report_files', 'ai_rule_categories', 'ai_rule_files',
+        'ai_rule_history', 'ai_rule_sets', 'ai_rule_source_files', 'ai_rules',
+        // Archicad translations
+        'archicad_translation_attributes', 'archicad_translations',
+        // Invoices and payments
+        'invoices', 'invoice_activities', 'invoice_logs', 'invoice_settings', 'recurring_invoices',
+        'payments', 'payment_activities', 'payment_logs', 'bank_infos', 'transactions',
+        // Calendar: leaves, holidays, working hours, resources
+        'user_leaves', 'user_holidays', 'company_holidays', 'work_hours', 'project_booked_resources',
+        'overloads', 'utilization_filters',
+        // Approvals: documents, assignments, time sheets
+        'document_approvers', 'assign_approvers', 'timesheet_approvers', 'timesheet_logs',
+        // Customers and CAD project fields
+        'task_customers', 'project_task_customers', 'task_fields', 'project_fields', 'easycase_publish_formats',
+        'business_units',
+        // Files and folders, archive
+        'folder_informations', 'folder_permissions', 'archives',
+        // Templates
+        'default_templates', 'default_project_templates', 'default_project_template_cases',
+        'project_templates', 'project_template_cases', 'template_module_cases',
+        // Roles, reports, dashboard, daily updates
+        'user_roles', 'save_reports', 'dashboard_sorting_orders', 'daily_updates', 'dailyupdate_notifications',
+        // Other
+        'status_workflows', 'project_sub_types', 'user_technologies', 'mail_tbls',
+        // Old SaaS tables, kept until confirmed unused
+        'addons', 'subscriptions', 'user_subscriptions',
     ];
 
     /** Kewico's company id in the old system. */
@@ -265,7 +305,7 @@ class LegacyTableMap
             ],
 
             'easycase_labels' => [],
-        ];
+        ] + array_fill_keys(self::COPY_TABLES, ['mode' => 'copy']);
     }
 
     /**

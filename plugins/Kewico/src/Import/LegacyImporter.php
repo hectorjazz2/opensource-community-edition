@@ -45,12 +45,17 @@ class LegacyImporter
     public function plan(string $table, array $def): array
     {
         $sourceTable = $def['source'] ?? $table;
+        $mode = $def['mode'] ?? 'replace';
         $sourceCols = $this->columns($this->source, $sourceTable);
         $targetCols = $this->columns($this->target, $table);
         if (!$sourceCols) {
             throw new RuntimeException("Source table `{$sourceTable}` not found in the legacy database.");
         }
-        if (!$targetCols) {
+        if ($mode === 'copy') {
+            // Kewico-only table: created with the old structure, copied as is.
+            $targetExists = (bool)$targetCols;
+            $targetCols = $sourceCols;
+        } elseif (!$targetCols) {
             throw new RuntimeException("Target table `{$table}` not found. Run the migrations first.");
         }
 
@@ -102,9 +107,11 @@ class LegacyImporter
             'oldOnly' => $oldOnly,
             'legacy' => !empty($def['legacy']) && $oldOnly,
             'where' => $def['where'] ?? null,
-            'mode' => $def['mode'] ?? 'replace',
+            'mode' => $mode,
             'sourceRows' => (int)$this->source->execute("SELECT COUNT(*) FROM `{$sourceTable}`" . self::whereSql($def['where'] ?? null))->fetchColumn(0),
-            'targetRows' => (int)$this->target->execute("SELECT COUNT(*) FROM `{$table}`")->fetchColumn(0),
+            'targetRows' => $mode === 'copy' && !$targetExists
+                ? 0
+                : (int)$this->target->execute("SELECT COUNT(*) FROM `{$table}`")->fetchColumn(0),
         ];
     }
 
@@ -136,7 +143,10 @@ class LegacyImporter
         $this->target->execute("SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,NO_AUTO_VALUE_ON_ZERO'");
 
         $legacyTable = self::LEGACY_PREFIX . $table;
-        if ($merge) {
+        $copy = $plan['mode'] === 'copy';
+        if ($copy) {
+            $this->createCopyTable($plan);
+        } elseif ($merge) {
             // Keep the rows that came with the new version, replace only the
             // rows with the ids being imported.
             foreach (array_chunk($this->sourceIds($plan), 1000) as $ids) {
@@ -160,7 +170,8 @@ class LegacyImporter
                 $newRows = [];
                 $legacyRows = [];
                 foreach ($rows as $old) {
-                    $newRows[] = $this->mapRow($old, $plan, $def, $lookups, $targetColumns);
+                    // Copy mode keeps every value exactly as it was, zero dates included.
+                    $newRows[] = $copy ? $old : $this->mapRow($old, $plan, $def, $lookups, $targetColumns);
                     if ($plan['legacy']) {
                         $legacyRows[] = $this->legacyRow($old, $plan, $legacyColumns);
                     }
@@ -393,6 +404,28 @@ class LegacyImporter
     }
 
     /**
+     * (Re)create a Kewico-only table with the structure it has in the old
+     * database, converted to InnoDB and utf8mb4 like the rest of the schema.
+     *
+     * @param array<string, mixed> $plan Result of plan()
+     * @return void
+     */
+    private function createCopyTable(array $plan): void
+    {
+        $ddl = $this->source->execute("SHOW CREATE TABLE `{$plan['source']}`")->fetch('num')[1];
+        $ddl = preg_replace('/^CREATE TABLE `[^`]+`/', "CREATE TABLE `{$plan['table']}`", $ddl);
+        // Column-level character sets and collations: the table default below applies.
+        $ddl = preg_replace('/ CHARACTER SET \w+/', '', $ddl);
+        $ddl = preg_replace('/ COLLATE \w+/', '', $ddl);
+        // Table options: InnoDB, utf8mb4, no stale AUTO_INCREMENT counter.
+        $ddl = preg_replace('/\)\s*ENGINE=.*$/s', ')', $ddl);
+        $ddl .= ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
+
+        $this->target->execute("DROP TABLE IF EXISTS `{$plan['table']}`");
+        $this->target->execute($ddl);
+    }
+
+    /**
      * (Re)create the side table for old-only columns, keyed by the same id.
      *
      * @param string $legacyTable Side table name
@@ -437,7 +470,9 @@ class LegacyImporter
         $columns = [];
         foreach ($rows as $row) {
             // Generated columns are calculated by MySQL and cannot be written.
-            if (stripos((string)$row['extra'], 'GENERATED') !== false) {
+            // Not to be confused with DEFAULT_GENERATED (a column with a
+            // default such as CURRENT_TIMESTAMP), which must be copied.
+            if (preg_match('/\b(VIRTUAL|STORED) GENERATED\b/i', (string)$row['extra'])) {
                 continue;
             }
             $nullable = $row['nullable'] === 'YES';
