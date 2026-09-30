@@ -1,0 +1,37 @@
+# Kewico plugin
+
+Kewico-specific functionality moved over from the old CakePHP 2 system
+(`kewico_php8`). Kept separate from the Orangescrum core so upstream releases
+can still be merged.
+
+## Data import from the old system
+
+The old database is read through the `legacy` connection
+(`config/app_local.php`, `LEGACY_DB_*` environment variables).
+
+```bash
+# Show what would be imported, write nothing
+bin/cake kewico import_legacy --dry-run
+
+# Import users and accounts (replaces the rows already in those tables)
+bin/cake kewico import_legacy --truncate
+
+# Only some tables
+bin/cake kewico import_legacy --tables users,company_users --truncate
+```
+
+What the import does per table:
+
+- Copies every column that exists in both schemas, and applies the renames and
+  mappings in `src/Import/LegacyTableMap.php`.
+- Fills new required columns with the defaults from the map, or with a safe
+  typed value (`0`, `''`, current time).
+- Turns MySQL zero dates (`0000-00-00`) into `NULL` where allowed.
+- Keeps the row IDs, so relations between tables stay intact.
+- Stores old columns that no longer exist in the new schema in a side table
+  `kewico_legacy_<table>` (same `id`), so later steps can use that data.
+- Compares row counts at the end and fails if they differ.
+
+Old passwords are plain MD5. They are copied unchanged. The login accepts them
+through the fallback password hasher and re-saves them as bcrypt at each
+user's next successful login.

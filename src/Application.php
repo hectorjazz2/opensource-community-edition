@@ -95,6 +95,10 @@ class Application extends BaseApplication implements AuthenticationServiceProvid
         // unconditional. Task attachments are stored locally in core (case_files);
         // the cloud-provider integration was removed for the Community Edition.
         $this->addPlugin('EmailTemplating', ['routes' => true, 'bootstrap' => true]);
+
+        // KEWICO: Kewico-specific functions moved over from kewico_php8.
+        $this->addPlugin('Kewico');
+
         $eventManager = EventManager::instance();
         // Attach Authentication.afterIdentify event listener
         $eventManager->on(new AuthenticationListener());
@@ -289,6 +293,9 @@ class Application extends BaseApplication implements AuthenticationServiceProvid
                 'className' => 'Authentication.Orm',
                 'finder' => 'auth',
             ],
+            // KEWICO: users imported from kewico_php8 still have MD5 passwords.
+            // Accept them, UsersController::login() re-saves them as bcrypt.
+            'passwordHasher' => self::passwordHasherConfig(),
         ]);
         // Load the authenticators, you want session first
         $authenticationService->loadAuthenticator('Authentication.Session');
@@ -302,5 +309,26 @@ class Application extends BaseApplication implements AuthenticationServiceProvid
         ]);
 
         return $authenticationService;
+    }
+
+    /**
+     * KEWICO: bcrypt first, then the plain MD5 hashes from kewico_php8
+     * (CakePHP 2 with an empty Security.salt).
+     *
+     * @return array<string, mixed>
+     */
+    public static function passwordHasherConfig(): array
+    {
+        return [
+            'className' => 'Authentication.Fallback',
+            'hashers' => [
+                'Authentication.Default',
+                [
+                    'className' => 'Authentication.Legacy',
+                    'hashType' => 'md5',
+                    'salt' => false,
+                ],
+            ],
+        ];
     }
 }

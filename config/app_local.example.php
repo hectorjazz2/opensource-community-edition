@@ -66,6 +66,23 @@ return [
         ],
 
         /*
+         * Kewico: read-only source for the data import from the old
+         * CakePHP 2 system (kewico_php8). Used by `bin/cake kewico import_legacy`.
+         */
+        'legacy' => [
+            'className' => 'Cake\Database\Connection',
+            'driver' => 'Cake\Database\Driver\Mysql',
+            'host' => env('LEGACY_DB_HOST', 'localhost'),
+            'port' => env('LEGACY_DB_PORT', '3306'),
+            'username' => env('LEGACY_DB_USERNAME', 'root'),
+            'password' => env('LEGACY_DB_PASSWORD', ''),
+            'database' => env('LEGACY_DB_NAME', 'kewico_legacy'),
+            'encoding' => 'utf8mb4',
+            'timezone' => 'UTC',
+            'cacheMetadata' => false,
+        ],
+
+        /*
          * The test connection is used during the test suite.
          */
         'test' => [

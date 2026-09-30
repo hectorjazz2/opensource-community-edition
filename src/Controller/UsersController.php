@@ -42,7 +42,9 @@ use Cake\Log\Log;
 use Cake\Network\Exception\SocketException;
 use App\Model\Entity\UserNotification;
 use App\Service\UserService;
+use App\Application;
 use Authentication\PasswordHasher\DefaultPasswordHasher;
+use Authentication\PasswordHasher\PasswordHasherFactory;
 use Cake\Core\Configure;
 use Cake\Mailer\Mailer;
 use EmailTemplating\Mailer\TemplatedMailer;
@@ -473,6 +475,13 @@ class UsersController extends AppController
                     }
                 }
 
+                // KEWICO: a user imported from kewico_php8 signed in with an
+                // old MD5 password. Re-save it as bcrypt (User::_setPassword).
+                $passwordIdentifier = $this->Authentication->getAuthenticationService()->identifiers()->get('Password');
+                if ($passwordIdentifier !== null && $passwordIdentifier->needsPasswordRehash()) {
+                    $userEntity->password = (string)$this->request->getData('password');
+                }
+
                 $usersTable->save($userEntity);
 
                 // Also activate the matching company_users row if it's still
@@ -605,7 +614,7 @@ class UsersController extends AppController
                     if (
                         $account
                         && !empty($account->password)
-                        && (new DefaultPasswordHasher())->check($submittedPassword, $account->password)
+                        && PasswordHasherFactory::build(Application::passwordHasherConfig())->check($submittedPassword, $account->password)
                         && $this->Users->find('auth')->where(['Users.id' => $account->id])->count() === 0
                     ) {
                         $failureMessage = __('Your account has been disabled. Please contact your administrator to regain access.');
