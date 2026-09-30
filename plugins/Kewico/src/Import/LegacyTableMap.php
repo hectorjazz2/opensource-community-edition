@@ -37,11 +37,17 @@ class LegacyTableMap
         // Group names must not be table names: `--tables projects` means the table.
         'cases' => ['status_groups', 'custom_statuses', 'types', 'type_companies', 'easycases'],
         'files' => ['case_files', 'log_times', 'labels', 'easycase_labels'],
+        'userdata' => [
+            'check_lists', 'search_filters', 'case_user_emails', 'case_user_views', 'case_recents',
+            'user_notifications', 'user_invitations', 'invoice_customers', 'case_templates',
+        ],
         'kewico' => self::COPY_TABLES,
         'all' => [
             'companies', 'users', 'company_users', 'projects', 'project_users',
             'status_groups', 'custom_statuses', 'types', 'type_companies', 'easycases',
             'case_files', 'log_times', 'labels', 'easycase_labels',
+            'check_lists', 'search_filters', 'case_user_emails', 'case_user_views', 'case_recents',
+            'user_notifications', 'user_invitations', 'invoice_customers', 'case_templates',
             ...self::COPY_TABLES,
         ],
     ];
@@ -309,6 +315,56 @@ class LegacyTableMap
             ],
 
             'easycase_labels' => [],
+
+            // Checklist items of a project.
+            'check_lists' => [
+                'rename' => [
+                    'item_name' => 'title',
+                    'is_check' => 'is_checked',
+                ],
+                'defaults' => [
+                    'uniq_id' => fn(array $old) => md5('kewico-check-list-' . $old['id']),
+                    'company_id' => self::COMPANY_ID,
+                    // Items were listed by id; keep that order.
+                    'sequence' => fn(array $old) => (int)$old['id'],
+                ],
+            ],
+
+            'search_filters' => [],
+            // Who gets emails for which project.
+            'case_user_emails' => [],
+            'case_user_views' => [],
+            'case_recents' => [],
+
+            // Notification settings. Kewico-only case_reminder and
+            // assignment_case go to kewico_legacy_user_notifications.
+            'user_notifications' => [
+                'legacy' => true,
+            ],
+
+            // Invitation records. The old email links (qstr) do not work in
+            // the new version, which uses invite_token: invitations that are
+            // still open have to be sent again from the new system.
+            'user_invitations' => [],
+
+            // Invoice customers. Kewico-only invoice settings per customer
+            // (VAT, note, invoice email and its text, language, street 2) go
+            // to kewico_legacy_invoice_customers.
+            'invoice_customers' => [
+                'legacy' => true,
+            ],
+
+            'case_templates' => [],
+
+            // Not imported on purpose:
+            // - task_views, default_task_views: the view types themselves;
+            //   the ids mean different views in the two versions.
+            // - easycase_relates: identical in both versions.
+            // - roles, role_actions, role_modules, role_groups, modules,
+            //   actions: Kewico's roles, mapped in step 4 (roles and permissions).
+            // - currencies, timezones, timezone_names, languages, industries,
+            //   log_types: reference lists the new version ships itself.
+            // - user_logins, log_activities: login and activity history.
         ] + array_fill_keys(self::COPY_TABLES, ['mode' => 'copy']);
     }
 
