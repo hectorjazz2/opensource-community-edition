@@ -20,6 +20,10 @@ use Cake\Utility\Text;
  *              [id => row] and passed to `transform`
  * - `transform` callable(array $new, array $old, array $lookups): array,
  *              runs last on every row
+ * - `decode`   plain-text columns stored with HTML entities by the old
+ *              system (`H&auml;rkingen`); decoded to real characters, as the
+ *              new version stores typed text. Never for HTML columns
+ *              (easycases.message is real HTML and stays as it is).
  * - `report`   title => SQL on the new database, printed after the import
  * - `legacy`   true: old-only columns go to `kewico_legacy_<table>`
  *
@@ -104,6 +108,7 @@ class LegacyTableMap
     {
         return [
             'companies' => [
+                'decode' => ['name'],
                 'defaults' => [
                     'tenant_uuid' => fn(array $old) => Text::uuid(),
                     'user_last_login' => fn(array $old) => $old['modified'] ?? $old['created'] ?? gmdate('Y-m-d H:i:s'),
@@ -112,6 +117,7 @@ class LegacyTableMap
             ],
 
             'users' => [
+                'decode' => ['name', 'last_name', 'short_name'],
                 // Emails that are used by more than one user (case-insensitive).
                 // The lowest id keeps the address, the others are marked.
                 // Known case: users 28 and 74 (panoramablick@bluewin.ch), both
@@ -179,6 +185,7 @@ class LegacyTableMap
             ],
 
             'projects' => [
+                'decode' => ['name', 'short_name'],
                 // Old status workflow (19 Salesplan, 20 Installation Plan,
                 // 21 Plan Status) becomes the account's status group.
                 'defaults' => [
@@ -198,6 +205,7 @@ class LegacyTableMap
             'status_groups' => [
                 'source' => 'workflows',
                 'mode' => 'merge',
+                'decode' => ['name'],
                 'defaults' => [
                     'parent_id' => 0,
                     'company_id' => self::COMPANY_ID,
@@ -215,6 +223,7 @@ class LegacyTableMap
             'custom_statuses' => [
                 'source' => 'statuses',
                 'mode' => 'merge',
+                'decode' => ['name'],
                 'where' => 'workflow_id > 0',
                 'defaults' => [
                     'company_id' => self::COMPANY_ID,
@@ -232,6 +241,7 @@ class LegacyTableMap
             // 13-18 are Kewico's (Astronaut Salesplan, Barn Design, ...).
             'types' => [
                 'mode' => 'merge',
+                'decode' => ['name'],
                 'defaults' => [
                     'project_id' => 0,
                 ],
@@ -247,6 +257,8 @@ class LegacyTableMap
 
             // Projects (istype 1) and their comments (istype 2).
             'easycases' => [
+                // Title is plain text; message is real HTML and is not decoded.
+                'decode' => ['title'],
                 'lookups' => [
                     'projects' => 'SELECT id, company_id FROM projects',
                     'statuses' => 'SELECT id, name, percentage, seq_order FROM statuses WHERE workflow_id > 0',
@@ -301,14 +313,27 @@ class LegacyTableMap
             // Time logs. Kewico-only: approver_id and pending_status (time
             // sheet approval) go to kewico_legacy_log_times.
             'log_times' => [
+                'decode' => ['description'],
                 'defaults' => [
                     'is_from_timer' => 0,
                 ],
+                // The description is shown as plain text. A few were saved by a
+                // rich-text editor as <p>...</p>; keep the text only.
+                'transform' => function (array $new, array $old, array $lookups): array {
+                    if (is_string($new['description']) && preg_match('/<(p|br|div|span)\b/i', $new['description'])) {
+                        $text = preg_replace('/<br\s*\/?>|<\/p>\s*<p[^>]*>/i', "
+", $new['description']);
+                        $new['description'] = trim(strip_tags($text));
+                    }
+
+                    return $new;
+                },
                 'legacy' => true,
             ],
 
             // Labels are company-wide in the old system (project_id 0).
             'labels' => [
+                'decode' => ['lbl_title'],
                 'defaults' => [
                     'project_id' => 0,
                 ],
@@ -318,6 +343,7 @@ class LegacyTableMap
 
             // Checklist items of a project.
             'check_lists' => [
+                'decode' => ['title'],
                 'rename' => [
                     'item_name' => 'title',
                     'is_check' => 'is_checked',

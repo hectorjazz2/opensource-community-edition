@@ -246,6 +246,11 @@ class LegacyImporter
         if (isset($def['transform'])) {
             $new = $def['transform']($new, $old, $lookups);
         }
+        foreach ($def['decode'] ?? [] as $name) {
+            if (isset($new[$name]) && is_string($new[$name])) {
+                $new[$name] = self::decodeEntities($new[$name]);
+            }
+        }
 
         $row = [];
         foreach ($columns as $name) {
@@ -392,6 +397,23 @@ class LegacyImporter
         $rows = $this->source->execute("SELECT `{$plan['key']}` FROM `{$plan['source']}`" . self::whereSql($plan['where']))->fetchAll('num');
 
         return array_map(fn($row) => (int)$row[0], $rows);
+    }
+
+    /**
+     * Plain text stored with HTML entities by the old system (`H&auml;rkingen`)
+     * back to real characters (`Härkingen`), as the new version stores it.
+     * Up to two passes, for the few values that were encoded twice.
+     *
+     * @param string $value Text
+     * @return string
+     */
+    public static function decodeEntities(string $value): string
+    {
+        for ($pass = 0; $pass < 2 && preg_match('/&(#[0-9]+|#x[0-9a-f]+|[a-z][a-z0-9]*);/i', $value); $pass++) {
+            $value = html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+
+        return $value;
     }
 
     /**
