@@ -160,3 +160,6 @@ secrets/*.txt
 # reference the private enterprise repo, internal ticket ids and client names,
 # and features not shipped in this edition. Delete this rule to publish them.
 docs/
+
+KEWICO_UPGRADE_PLAN_CLIENT.md
+Kewico System Upgrade Plan and Budget.docx
