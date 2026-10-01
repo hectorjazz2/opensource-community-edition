@@ -18,6 +18,7 @@ class LegacyImporter
     private const READ_CHUNK = 1000;
     private const MAX_PLACEHOLDERS = 60000;
     private const LEGACY_PREFIX = 'kewico_legacy_';
+    private const FINGERPRINT_PREFIX = 'kewico-copy:';
 
     private const NUMERIC_TYPES = ['tinyint', 'smallint', 'mediumint', 'int', 'bigint', 'decimal', 'float', 'double', 'bit'];
     private const DATE_TYPES = ['date', 'datetime', 'timestamp'];
@@ -438,15 +439,14 @@ class LegacyImporter
         // through a migration), re-copying it would silently rebuild it with
         // the old structure. Stop instead: that table then needs a normal
         // mapping (replace mode) in LegacyTableMap.
+        // Changes in the OLD table (kewico_php8 is still maintained) are fine:
+        // the copy is rebuilt with the new structure.
         $existing = $this->columns($this->target, $plan['table']);
-        if ($existing) {
-            $describe = fn(array $cols) => array_map(fn(array $c) => $c['columnType'] . ($c['nullable'] ? ' NULL' : ' NOT NULL'), $cols);
-            if ($describe($existing) !== $describe($plan['sourceCols'])) {
-                throw new RuntimeException(
-                    "`{$plan['table']}` has changed in the new system since it was copied "
-                    . '(columns differ from the old table). Map it in LegacyTableMap instead of copying it.'
-                );
-            }
+        if ($existing && $this->changedInNewSystem($plan, $existing)) {
+            throw new RuntimeException(
+                "`{$plan['table']}` has changed in the new system since it was copied. "
+                . 'Map it in LegacyTableMap instead of copying it.'
+            );
         }
 
         $ddl = $this->source->execute("SHOW CREATE TABLE `{$plan['source']}`")->fetch('num')[1];
@@ -460,6 +460,58 @@ class LegacyImporter
 
         $this->target->execute("DROP TABLE IF EXISTS `{$plan['table']}`");
         $this->target->execute($ddl);
+
+        // Remember the structure as copied, to recognise later changes made
+        // in the new system (see changedInNewSystem()).
+        $fingerprint = self::FINGERPRINT_PREFIX . self::structureHash($this->columns($this->target, $plan['table']));
+        $this->target->execute("ALTER TABLE `{$plan['table']}` COMMENT = '{$fingerprint}'");
+    }
+
+    /**
+     * Has a copied table been changed in the new system since it was copied?
+     *
+     * Tables copied with a fingerprint: changed when the structure no longer
+     * matches it. Older copies without one: changed when they have a column
+     * the old table does not have, or a column of a different type. Columns
+     * only added to the old table (kewico_php8 is still maintained) do not
+     * count.
+     *
+     * @param array<string, mixed> $plan Result of plan()
+     * @param array<string, array<string, mixed>> $existing Columns of the copy
+     * @return bool
+     */
+    private function changedInNewSystem(array $plan, array $existing): bool
+    {
+        $comment = (string)$this->target->execute(
+            'SELECT TABLE_COMMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
+            [$plan['table']]
+        )->fetchColumn(0);
+        if (strpos($comment, self::FINGERPRINT_PREFIX) === 0) {
+            return substr($comment, strlen(self::FINGERPRINT_PREFIX)) !== self::structureHash($existing);
+        }
+
+        foreach ($existing as $name => $col) {
+            $old = $plan['sourceCols'][$name] ?? null;
+            if ($old === null || $old['columnType'] !== $col['columnType'] || $old['nullable'] !== $col['nullable']) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $columns Column metadata
+     * @return string
+     */
+    private static function structureHash(array $columns): string
+    {
+        $parts = [];
+        foreach ($columns as $name => $col) {
+            $parts[] = $name . ' ' . $col['columnType'] . ($col['nullable'] ? ' NULL' : ' NOT NULL');
+        }
+
+        return md5(implode(',', $parts));
     }
 
     /**
