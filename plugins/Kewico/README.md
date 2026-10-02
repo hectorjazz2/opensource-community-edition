@@ -25,7 +25,14 @@ bin/cake kewico import_legacy --tables all --truncate
 
 Groups for `--tables`: `accounts` (companies, users, memberships, accounts),
 `cases` (statuses, types, projects and comments), `files` (file rows, time
-logs, labels), `all`.
+logs, labels), `userdata` (checklists, filters, notification and email
+settings, invitations, invoice customers), `kewico` (the 59 Kewico-only
+tables, copied 1:1), `all`.
+
+Kewico-only tables are copied with their old structure and keep a fingerprint
+of it (table comment `kewico-copy:...`). When the old table changes, the next
+import rebuilds the copy; when the copy was changed in the new system, the
+import stops instead.
 
 Tables marked `merge` in the map (status groups, custom statuses, types) keep
 the rows that ship with the new version and replace only the imported ids.
