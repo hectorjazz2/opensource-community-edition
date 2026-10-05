@@ -23,7 +23,7 @@ define('EDITION_VENDOR_URL', 'https://www.andolasoft.com/');
 define('EDITION_LICENSE_SPDX', 'AGPL-3.0-or-later');
 define('EDITION_LICENSE_NAME', 'GNU Affero General Public License v3.0 or later');
 define('EDITION_LICENSE_URL', 'https://www.gnu.org/licenses/agpl-3.0.html');
-define('EDITION_SOURCE_URL', 'https://github.com/Orangescrum/opensource-community-edition');
+// define('EDITION_SOURCE_URL', 'https://github.com/Orangescrum/opensource-community-edition');
 // Where users go to license Orangescrum without the AGPL's obligations,
 // or to buy the Enterprise edition.
 define('EDITION_COMMERCIAL_URL', 'https://www.orangescrum.com/contact-us');
