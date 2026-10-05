@@ -65,7 +65,7 @@ class TmzoneComponent extends Component
                 $sign1 = substr($gmt_offset, 0, 1);
                 $value = substr($gmt_offset, 1, -4);
 
-                if ($this->isDaylightSaving($timezoneid, $gmt_offset)) {
+                if ($this->isDaylightSaving($timezoneid, $gmt_offset, $db_date)) { // KEWICO: per date
                     $value = $value - $dst_offset;
                 } else {
                     $value = $value + $dst_offset;
@@ -84,7 +84,7 @@ class TmzoneComponent extends Component
             if ($dst_offset > 0) {
                 if (!($dst)) {
                     $dst_offset = 0;
-                } elseif (!$this->isDaylightSaving($timezoneid, $gmt_offset)) {
+                } elseif (!$this->isDaylightSaving($timezoneid, $gmt_offset, $db_date)) { // KEWICO: per date
                     $dst_offset = 0;
                 }
             }
@@ -101,196 +101,17 @@ class TmzoneComponent extends Component
             return date($types[$type] ?? $types['datetime'], @mktime(intval(intval($time) / 60), intval($time) % 60, intval($gmt_secs), intval($exp_d[1]), intval($exp_d[2]), intval($exp_d[0])));
         }
     }
-    public function isDaylightSaving($timezoneid, $gmt_offset)
+    public function isDaylightSaving($timezoneid, $gmt_offset, $db_date = null)
     {
-        $gmt_minute = (int) gmdate('i');
-        $gmt_hour = (int) gmdate('H');
-        $gmt_month = (int) gmdate('m');
-        $gmt_day = (int) gmdate('d');
-        $gmt_year = (int) gmdate('Y');
-
-        $offset_hours = (int) $gmt_offset;
-        $offset_minutes = (int) round(($gmt_offset - $offset_hours) * 60);
-
-        $total_hrs = $gmt_hour + $offset_hours;
-        $total_minutes = $gmt_minute + (int) $offset_minutes;
-
-        $cur_year = date('Y', mktime($total_hrs, $total_minutes, 0, $gmt_month, $gmt_day, $gmt_year));
-
-        switch ($timezoneid) {
-            /*
-                North American cases: begins at 2 am on the first Sunday in April
-                and ends on the last Sunday in October.  Note: Monterrey does not
-                actually observe DST
-            */
-            case 4:        /*	Alaska */
-            case 5:        /*	Pacific Time (US & Canada); Tijuana */
-            case 8:        /*	Mountain Time (US & Canada) */
-            case 10:    /*	Central Time (US & Canada) */
-            case 11:    /*	Guadalajara, Mexico City, Monterrey */
-            case 14:    /*	Eastern Time (US & Canada) */
-            case 16:    /*	Atlantic Time (Canada) */
-            case 19:    /*	Newfoundland */
-                if (
-                    $this->afterFirstDayInMonth($cur_year, $cur_year, 3, 'Sun', $gmt_offset) &&
-                    $this->beforeLastDayInMonth($cur_year, $cur_year, 11, 'Sun', $gmt_offset)
-                ) {
-                    return true;
-                } else {
-                    return false;
-                }
-            // no break
-            case 7:        /*	Chihuahua, La Paz, Mazatlan */
-                if (
-                    $this->afterFirstDayInMonth($cur_year, $cur_year, 5, 'Sun', $gmt_offset) &&
-                    $this->beforeLastDayInMonth($cur_year, $cur_year, 9, 'Sun', $gmt_offset)
-                ) {
-                    return true;
-                } else {
-                    return false;
-                }
-
-            // no break
-            case 18:    /*	Santiago, Chile */
-                if (
-                    $this->afterSecondDayInMonth($cur_year, $cur_year, 10, 'Sat', $gmt_offset) &&
-                    $this->beforeSecondDayInMonth($cur_year + 1, $cur_year, 3, 'Sat', $gmt_offset)
-                ) {
-                    return true;
-                } else {
-                    return false;
-                }
-
-            // no break
-            case 20:    /*	Brasilia, Brazil */
-                if (
-                    $this->afterFirstDayInMonth($cur_year, $cur_year, 11, 'Sun', $gmt_offset) &&
-                    $this->beforeThirdDayInMonth($cur_year, $cur_year, 2, 'Sun', $gmt_offset)
-                ) {
-                    return true;
-                } else {
-                    return false;
-                }
-
-            // no break
-            case 23:    /*	Mid-Atlantic */
-                if (
-                    $this->afterLastDayInMonth($cur_year, $cur_year, 3, 'Sun', $gmt_offset) &&
-                    $this->beforeLastDayInMonth($cur_year, $cur_year, 9, 'Sun', $gmt_offset)
-                ) {
-                    return true;
-                } else {
-                    return false;
-                }
-
-            /*	EU, Russia, other cases: begins at 1 am GMT on the last Sunday
-in March and ends on the last Sunday in October */
-            // no break
-            case 22:    /*	Greenland */
-            case 24:    /*	Azores */
-            case 27:    /*	Greenwich Mean Time : Dublin, Edinburgh, Lisbon, London */
-            case 28:    /*	Amsterdam, Berlin, Bern, Rome, Stockholm, Vienna */
-            case 29:    /*	Belgrade, Bratislava, Budapest, Ljubljana, Prague */
-            case 30:    /*	Brussels, Copenhagen, Madrid, Paris */
-            case 31:    /*	Sarajevo, Skopje, Warsaw, Zagreb */
-            case 33:    /*	Athens, Istanbul, Minsk */
-            case 34:    /*	Bucharest */
-            case 37:    /*	Helsinki, Kyiv, Riga, Sofia, Tallinn, Vilnius */
-            case 41:    /*	Moscow, St. Petersburg, Volgograd */
-            case 47:    /*	Ekaterinburg */
-            case 45:    /*	Baku, Tbilisi, Yerevan */
-            case 51:    /*	Almaty, Novosibirsk */
-            case 56:    /*	Krasnoyarsk */
-            case 58:    /*	Irkutsk, Ulaan Bataar */
-            case 64:    /*	Yakutsk, Sibiria */
-            case 71:    /*	Vladivostok */
-                if (
-                    $this->afterLastDayInMonth($cur_year, $cur_year, 3, 'Sun', $gmt_offset) &&
-                    $this->beforeLastDayInMonth($cur_year, $cur_year, 10, 'Sun', $gmt_offset)
-                ) {
-                    return true;
-                } else {
-                    return false;
-                }
-
-            // no break
-            case 35:    /*	Cairo, Egypt */
-                if (
-                    $this->afterLastDayInMonth($cur_year, $cur_year, 4, 'Fri', $gmt_offset) &&
-                    $this->beforeLastDayInMonth($cur_year, $cur_year, 9, 'Thu', $gmt_offset)
-                ) {
-                    return true;
-                } else {
-                    return false;
-                }
-
-            // no break
-            case 39:    /*	Baghdad, Iraq */
-                if (
-                    $this->afterFirstOfTheMonth($cur_year, $cur_year, 4, $gmt_offset) &&
-                    $this->beforeFirstOfTheMonth($cur_year, $cur_year, 10, $gmt_offset)
-                ) {
-                    return true;
-                } else {
-                    return false;
-                }
-
-            // no break
-            case 43:    /*	Tehran, Iran - Note: This is an approximation to
-the actual DST dates since Iran goes by the Persian
-calendar.  There are tools for converting between
-Gregorian and Persian calendars at www.farsiweb.info.
-This may be added at a later date for better accuracy */
-                if (
-                    $this->afterLastDayInMonth($cur_year, $cur_year, 3, 'Sun', $gmt_offset) &&
-                    $this->beforeLastDayInMonth($cur_year, $cur_year, 9, 'Sun', $gmt_offset)
-                ) {
-                    return true;
-                } else {
-                    return false;
-                }
-
-            // no break
-            case 65:    /*	Adelaide */
-            case 68:    /*	Canberra, Melbourne, Sydney */
-                if (
-                    $this->afterLastDayInMonth($cur_year, $cur_year, 10, 'Sun', $gmt_offset) &&
-                    $this->beforeLastDayInMonth($cur_year, $cur_year + 1, 3, 'Sun', $gmt_offset)
-                ) {
-                    return true;
-                } else {
-                    return false;
-                }
-
-            // no break
-            case 70:    /*	Hobart */
-                if (
-                    $this->afterFirstDayInMonth($cur_year, $cur_year, 10, 'Sun', $gmt_offset) &&
-                    $this->beforeLastDayInMonth($cur_year, $cur_year + 1, 3, 'Sun', $gmt_offset)
-                ) {
-                    return true;
-                } else {
-                    return false;
-                }
-
-            // no break
-            case 73:    /*	Auckland, Wellington */
-                if (
-                    $this->afterFirstDayInMonth($cur_year, $cur_year, 10, 'Sun', $gmt_offset) &&
-                    $this->beforeThirdDayInMonth($cur_year, $cur_year + 1, 3, 'Sun', $gmt_offset)
-                ) {
-                    return true;
-                } else {
-                    return false;
-                }
-
-            // no break
-            default:
-                break;
+        // KEWICO: daylight saving for the date being converted, with the rules
+        // kewico_php8 used (Kewico\Utility\DaylightSaving). Without a date: now.
+        $parts = \Kewico\Utility\DaylightSaving::parts($db_date);
+        if ($parts === null) {
+            return \Kewico\Utility\DaylightSaving::isActive($timezoneid, $gmt_offset);
         }
-        return false;
-    }
 
+        return \Kewico\Utility\DaylightSaving::isActive($timezoneid, $gmt_offset, ...$parts);
+    }
     /*	This function returns true if the current date (at the specified GMT
     offset) is after the first specified day of the week in specified
     month and false if it is not */
@@ -563,7 +384,7 @@ This may be added at a later date for better accuracy */
         if ($dst_offset > 0) {
             if (!$dst) {
                 $dst_offset = 0;
-            } elseif (!$this->isDaylightSaving($timezoneid, $gmt_offset)) {
+            } elseif (!$this->isDaylightSaving($timezoneid, $gmt_offset, $db_date)) { // KEWICO: per date
                 $dst_offset = 0;
             }
         }

@@ -127,9 +127,11 @@ class LegacyTableMap
                         JOIN (SELECT LOWER(TRIM(email)) AS e, MIN(id) AS keep_id FROM users
                               GROUP BY LOWER(TRIM(email)) HAVING COUNT(*) > 1) d
                           ON LOWER(TRIM(u.email)) = d.e AND u.id <> d.keep_id',
+                    'timezones' => 'SELECT id, dst_offset FROM timezones',
                 ],
                 'defaults' => [
                     'phone' => fn(array $old) => self::firstFilled($old, ['phone_number', 'contact_no']),
+                    'is_dst' => 0,
                 ],
                 'transform' => function (array $new, array $old, array $lookups): array {
                     // The new login lowercases the submitted email before the
@@ -139,6 +141,11 @@ class LegacyTableMap
                         $email = 'duplicate' . $old['id'] . '.' . $email . '.invalid';
                     }
                     $new['email'] = $email;
+
+                    // The new version takes the daylight saving flag from
+                    // users.is_dst; the old system took it from the user's time
+                    // zone. Same flag, so dates show the same hour.
+                    $new['is_dst'] = (int)($lookups['timezones'][$old['timezone_id']]['dst_offset'] ?? 0);
 
                     // Pending invitations (isactive 2) cannot log in to the old
                     // system. The new login lets a pending user with a password
