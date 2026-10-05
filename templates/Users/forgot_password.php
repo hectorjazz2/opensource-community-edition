@@ -151,7 +151,7 @@ echo $this->Html->css(['pswd-strength/pass-strength'], ['block' => 'css-block-fi
     <div class="brand-side">
         <div>
             <a href="<?= $this->Url->webroot('/') ?>" class="orangescrum-logo">
-                <img src="<?= $this->Url->webroot('img/header/os-white-logo.svg') ?>" alt="Orangescrum" style="height: 40px; width: auto;" />
+                <img src="<?= $this->Url->webroot('img/header/kewico_logo_white_text.png') ?>" alt="Kewico" style="height: 90px; width: auto;" />
             </a>
             
             <?php if ($chkemail == "11" && $passemail == "10"): ?>

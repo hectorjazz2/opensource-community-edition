@@ -71,8 +71,8 @@
     <div class="brand-side">
         <div>
             <a href="<?= $this->Url->webroot('/') ?>" class="orangescrum-logo">
-                <img src="<?= $this->Url->webroot('img/header/os-white-logo.svg') ?>" alt="Orangescrum"
-                    style="height: 40px; width: auto;" />
+                <img src="<?= $this->Url->webroot('img/header/kewico_logo_white_text.png') ?>" alt="Kewico"
+                    style="height: 90px; width: auto;" />
             </a>
 
             <h1 class="brand-h1">Simplify work.<br><span>Deliver</span> results.</h1>

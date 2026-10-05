@@ -1,16 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="637.313" height="825.859" viewBox="0 0 637.313 825.859">
-  <g id="Group_121" data-name="Group 121" transform="translate(-4834.344 5615.93)">
-    <g id="Group_83" data-name="Group 83" transform="translate(4834.344 -5615.93)">
-      <g id="Group_35" data-name="Group 35">
-        <g id="Group_32" data-name="Group 32">
-          <g id="Group_31" data-name="Group 31">
-            <g id="Group_28" data-name="Group 28">
-              <path id="Path_58" data-name="Path 58" d="M323.277,391.049c-176.624,0-318.661,142.973-318.661,318.662S147.6,1028.37,323.277,1028.37,641.929,885.389,641.929,709.711,498.957,391.049,323.277,391.049Zm0,537.328c-120.552,0-218.667-98.124-218.667-218.666s98.115-218.669,218.667-218.669,218.667,98.125,218.667,218.669A218.355,218.355,0,0,1,323.277,928.377Z" transform="translate(-4.616 -202.51)"/>
-              <path id="Path_59" data-name="Path 59" d="M43.243,514.346S34.8,374.58,228.035,368.957C228.035,368.957,228.035,518.1,43.243,514.346Z" transform="translate(284.257 -368.957)" fill="#f47722"/>
-            </g>
-          </g>
-        </g>
-      </g>
-    </g>
-  </g>
+<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25" width="25" height="25">
+	<defs>
+		<image  width="21" height="25" id="img1" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABUAAAAZCAMAAADpC5XfAAAAAXNSR0IB2cksfwAAAZtQTFRFAAAA//8A/78A/LIG/LIF/78AAAAA8aoA/7QE+rIF+rIH+7IH+rIH+7IE768A/64A/LID+bIG+7EH+7EG/7sA+bMG+rIG+7MG/LIH/7YA/6oA+LEH+7IG+rIG+bIG+LEH/7YJ+7IG+rIH+7MG+bAG+LcH+bEG+rIF/7QG+q4F+7IG+rIH+bEG/7YA9rMJ968I/78A9rYJ9rAJ/LQF+rIH/7QE/LEG+bEG+rEF+7MG+7MH+rII+bEG+rIH+7IG+7AE/7QE+7EG+rIH+bEG/8YA87YA+7ME+7IH+rIH+rIF/7IE+rMF+rIH+7MG+LQI/6oA+7IG+7IH+rIH+rIF/7MA/7IG+bIG+7QH+7IH+rIH+bAG/LUG/8wA+bIG+LEH+7IH/LIG+rIH+rIG+rIH+7MG+rMF+rIH+rEF+7EG/7IF+bED+bEG/bIH/LIH/6oA+LED+rIH+bMG+LEH+rIG+7MF/68A9rIF+7IG/7EA/7YH+rEF/7kA+7IG+rIG+rUF/8QA+rQG+rIH+rIF/bMH+rIH+7MH+rMG+rIH+rEFbN0gOAAAAIl0Uk5TAAEMWV0IARJHv/HrwEIQE0mz44YPhtWxSQ4JS7LIhSccgsOrVyeKvCkve5UuBxsgBBwdZtw6W9iMh/9gsP7kRD3l/KsJFXz26Gc8u/mqIgx36upmCiu5c+X9n1kFt+r/Vv+p34Nv9G/PMlL0cZwDS+taTuKQEDjODSO6FtTHMA2m3jJr80ai95OBTzhCAAABEElEQVR4nGNkgABGMPgF40Eodogo4yckUX6QwHshsPhzqKgUmPcQyFEAMT68AYmqMjJ+57oBNVCT8ZE84xWgqC5Q/gIDHBgy/r4MFDVmZDyNEGQwY2Q8wcAoJc/IeBQhaAPUeRBVlM0KZN0eBhRRV5DYdrDLEKJeIMFNDCii/mBXr2FAEQ1l/HZB4ArMTqhoOFDdMoRLQKKKjIwPFBlfSixAFtVgZPzDOif1qg7jTGRRYDhOZ2DIYvzGfeQCQpSHcRKImc/4nnfdM7i55v0QFUWM74QZu9F8wcBQxvjqjXYHuihD5fufkqf2MP5HC7NqxqcyjE0YIVnPeF+JsY6RoZmRsRop1BnaGBkrGBmwAEYAf/5EGw5rCGAAAAAASUVORK5CYII="/>
+	</defs>
+	<style>
+	</style>
+	<use id="Background" href="#img1" x="2" y="0"/>
 </svg>

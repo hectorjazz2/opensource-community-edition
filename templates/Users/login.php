@@ -37,12 +37,12 @@
     <div class="brand-side">
         <div>
             <a href="<?= $this->Url->webroot('/') ?>" class="orangescrum-logo">
-                <img src="<?= $this->Url->webroot('img/header/os-white-logo.svg') ?>" alt="Orangescrum" style="height: 40px; width: auto;" />
+                <img src="<?= $this->Url->webroot('img/header/kewico_logo_white_text.png') ?>" alt="Kewico" style="height: 90px; width: auto;" />
             </a>
             
-            <h1 class="brand-h1">Orangescrum<br><span>Open Source Community Edition</span></h1>
+            <h1 class="brand-h1">Kewico<br><span>Team Project Management</span></h1>
             <p class="brand-p">
-                Self-hosted project and task management you fully own — free software under the AGPL, with no user, project or storage limits.
+                Project management tool that helps individuals and teams plan, organize, and track their work efficiently.
             </p>
 
             <div class="feature-list">
@@ -60,8 +60,7 @@
                         <span class="glyphicon glyphicon-ok"></span>
                     </div>
                     <div>
-                        <strong>No Limits, No Licence Keys</strong>
-                        <span>Unlimited users and projects, free under the AGPL</span>
+                        <span>Create projects, manage tasks, set priorities, and monitor progress in a simple and intuitive interface designed for productivity.</span>
                     </div>
                 </div>
                 <div class="feature-item">
