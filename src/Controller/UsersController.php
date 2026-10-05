@@ -3129,9 +3129,16 @@ class UsersController extends AppController
                 $userInfo->language = $language;
                 $is_language_changed = true;
             }
+            // KEWICO: the checkbox posts 1 (set by the profile page's script)
+            // or, with the hidden field in profile.php, 0 when unticked. The
+            // old check only accepted 'on', so saving a profile with DST ticked
+            // switched daylight saving off (dates one hour off in summer).
             $isDst = $this->request->getData('data.User.is_dst');
-            if (!empty($isDst) && $isDst != $userInfo->is_dst) {
-                $userInfo->is_dst = $isDst == 'on' ? 1 : 0;
+            if ($isDst !== null && $isDst !== '') {
+                $isDstValue = in_array(strtolower((string)$isDst), ['1', 'on', 'true'], true) ? 1 : 0;
+                if ($isDstValue !== (int)$userInfo->is_dst) {
+                    $userInfo->is_dst = $isDstValue;
+                }
             }
             $timeFormat = $this->request->getData('data.User.time_format');
             if (!empty($timeFormat) && $timeFormat != $userInfo->time_format) {

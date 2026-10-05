@@ -168,7 +168,9 @@
                     <?php echo __('Do you want to set daylight saving time(DST)'); ?> ?
                     <div class="togglebutton ml-15">
                         <label>
-                            <input type="checkbox" name="data[User][is_dst]" id="user_is_dst" <?php echo (isset($userdata['is_dst']) && $userdata['is_dst']) ? 'checked="checked"' : ''; ?> style="cursor:pointer;" onclick="showDstMessage();" value="<?php echo (isset($userdata['is_dst']) && $userdata['is_dst']) ? 1 : 0; ?>">
+                            <?php // KEWICO: unticked boxes are not posted; send 0 then, so DST can be switched off ?>
+                            <input type="hidden" name="data[User][is_dst]" value="0">
+                            <input type="checkbox" name="data[User][is_dst]" id="user_is_dst" <?php echo (isset($userdata['is_dst']) && $userdata['is_dst']) ? 'checked="checked"' : ''; ?> style="cursor:pointer;" onclick="showDstMessage();" value="1">
                         </label>
                     </div>
                 </div>
