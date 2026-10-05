@@ -230,6 +230,8 @@ $is_invited_user = ($role === 'invited') ? 1 : 0;
                             <?php echo $this->Format->shortLength($user['email'], 25); ?>
                         </span>
                     </li>
+                    <?php // KEWICO: role and business unit, as in kewico_php8 ?>
+                    <?php echo $this->element('Kewico.user_card_fields', ['info' => $user['Kewico'] ?? null, 'part' => 'main']); ?>
                     <li data-usr-id="<?php echo $user['id']; ?>" data-usr-name="<?php echo $user['name']; ?>"
                         <?php if ($this->Format->isAllowed('Assign Project', $roleAccess)): ?> class="disp_assn_proj_popup"<?php endif; ?>>
                         <span class="cnt_ttl_usr"><?php echo __('Projects'); ?></span>
@@ -237,6 +239,8 @@ $is_invited_user = ($role === 'invited') ? 1 : 0;
                             <?php echo (isset($user['all_project']) && trim($user['all_project'])) ? $user['all_project'] : 'N/A'; ?>
                         </span>
                     </li>
+                    <?php // KEWICO: mobile app fields, as in kewico_php8 ?>
+                    <?php echo $this->element('Kewico.user_card_fields', ['info' => $user['Kewico'] ?? null, 'part' => 'app']); ?>
                 </ul>
             </div>
         </div>

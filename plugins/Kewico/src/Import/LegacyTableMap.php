@@ -37,7 +37,7 @@ class LegacyTableMap
      * @var array<string, array<string>>
      */
     public const GROUPS = [
-        'accounts' => ['companies', 'users', 'company_users', 'projects', 'project_users'],
+        'accounts' => ['companies', 'users', 'company_users', 'projects', 'project_users', 'roles'],
         // Group names must not be table names: `--tables projects` means the table.
         'cases' => ['status_groups', 'custom_statuses', 'types', 'type_companies', 'easycases'],
         'files' => ['case_files', 'log_times', 'labels', 'easycase_labels'],
@@ -47,7 +47,7 @@ class LegacyTableMap
         ],
         'kewico' => self::COPY_TABLES,
         'all' => [
-            'companies', 'users', 'company_users', 'projects', 'project_users',
+            'companies', 'users', 'company_users', 'projects', 'project_users', 'roles',
             'status_groups', 'custom_statuses', 'types', 'type_companies', 'easycases',
             'case_files', 'log_times', 'labels', 'easycase_labels',
             'check_lists', 'search_filters', 'case_user_emails', 'case_user_views', 'case_recents',
@@ -192,6 +192,19 @@ class LegacyTableMap
                     'status_group_id' => fn(array $old) => (int)$old['workflow_id'],
                 ],
                 'legacy' => true,
+            ],
+
+            // Kewico's own roles (5 CAD Planer, 6 Sales, 7 Project Coordinator,
+            // 8 Office, 9 Manager, 10 View Only, 12 Kewico_Coordinator).
+            // company_users.role_id points at them. Roles 1-4 (Owner, Admin,
+            // User, Client) are the same in both versions and are kept, like
+            // the new version's own roles (e.g. 699 Guest).
+            // Only the names: what each role may do (role_actions) is mapped
+            // in step 4 (roles and permissions).
+            'roles' => [
+                'mode' => 'merge',
+                'where' => 'id > 4',
+                'decode' => ['role'],
             ],
 
             'project_users' => [
@@ -386,8 +399,8 @@ class LegacyTableMap
             // - task_views, default_task_views: the view types themselves;
             //   the ids mean different views in the two versions.
             // - easycase_relates: identical in both versions.
-            // - roles, role_actions, role_modules, role_groups, modules,
-            //   actions: Kewico's roles, mapped in step 4 (roles and permissions).
+            // - role_actions, role_modules, role_groups, modules, actions: what
+            //   each role may do, mapped in step 4 (roles and permissions).
             // - currencies, timezones, timezone_names, languages, industries,
             //   log_types: reference lists the new version ships itself.
             // - user_logins, log_activities: login and activity history.

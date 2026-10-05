@@ -1292,6 +1292,18 @@ class UsersController extends AppController
 
         }
 
+        // KEWICO: role, business unit and mobile app fields on the user card.
+        $userArr = (new \Kewico\Service\UserCardInfo())->addTo(
+            $userArr,
+            (int)SES_COMP,
+            function (string $utc) use ($hTmzone, $hDatetime): string {
+                $locDT = $hTmzone->GetDateTime(SES_TIMEZONE, TZ_GMT, TZ_DST, TZ_CODE, $utc, 'datetime');
+                $gmdate = $hTmzone->GetDateTime(SES_TIMEZONE, TZ_GMT, TZ_DST, TZ_CODE, GMT_DATETIME, 'date');
+
+                return $hDatetime->dateFormatOutputdateTime_day($locDT, $gmdate);
+            }
+        );
+
         // Get status counts via UserService
         $statusCounts = $userService->getStatusCounts(SES_COMP, $search_query);
         $active_user_cnt   = $statusCounts['active'];
