@@ -52,3 +52,21 @@ What the import does per table:
 Old passwords are plain MD5. They are copied unchanged. The login accepts them
 through the fallback password hasher and re-saves them as bcrypt at each
 user's next successful login.
+
+## Keeping the preview in sync (one way)
+
+`scripts/sync_legacy.sh` re-runs the full import, so this system shows the
+live data of kewico_php8 as of the last run. It is one-way only: everything
+changed in this system since the previous run is replaced. It only reads the
+`legacy` database.
+
+```bash
+# by hand
+sh plugins/Kewico/scripts/sync_legacy.sh
+
+# from cron, every night at 02:30 (full path to PHP, cron has a minimal PATH)
+30 2 * * * PHP_BIN=/usr/local/php83/bin/php /bin/sh /home/<user>/www/kewico.com/APP/CAD_NEW/plugins/Kewico/scripts/sync_legacy.sh
+```
+
+One run at a time (a lock in `tmp/`), output in `logs/kewico_sync.log`, exit
+code 0 when every row count matches. The cache is cleared after each run.
