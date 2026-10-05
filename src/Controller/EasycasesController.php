@@ -2163,7 +2163,16 @@ class EasycasesController extends AppController
                         $filesArr[$fkey]['CaseFile']['is_ImgFileExt'] = $frmt->validateImgFileExt($caseFileUName);
                         $filesArr[$fkey]['CaseFile']['is_PdfFileExt'] = $frmt->validatePdfFileExt($caseFileUName);
                         if ($filesArr[$fkey]['CaseFile']['is_ImgFileExt']) {
-                            $filesArr[$fkey]['CaseFile']['fileurl_thumb'] = $isStorageEnabled ? $this->Storage->generateTemporaryURL(DIR_CASE_FILES_S3_FOLDER_THUMB . $caseFileUName) : HTTP_CASE_FILES . 'thumb_' . $caseFileUName;
+                            // KEWICO: only point at a thumbnail file when one was recorded
+                            // (files imported from kewico_php8 have none). An empty
+                            // fileurl_thumb makes the template generate the preview from
+                            // the original via users/image_thumb, as the other file lists do.
+                            $thumb = trim((string)($getFiles['CaseFile']['thumb'] ?? ''));
+                            if ($isStorageEnabled) {
+                                $filesArr[$fkey]['CaseFile']['fileurl_thumb'] = $this->Storage->generateTemporaryURL(DIR_CASE_FILES_S3_FOLDER_THUMB . $caseFileUName);
+                            } else {
+                                $filesArr[$fkey]['CaseFile']['fileurl_thumb'] = $thumb !== '' ? HTTP_CASE_FILES . $thumb : '';
+                            }
                         }
                         $filesArr[$fkey]['CaseFile']['fileurl'] = $isStorageEnabled ? $this->Storage->generateTemporaryURL(DIR_CASE_FILES_S3_FOLDER . $caseFileUName) : HTTP_CASE_FILES . $caseFileUName;
                         $filesArr[$fkey]['CaseFile']['file_size'] = $frmt->getFileSize($getFiles['CaseFile']['file_size']);
