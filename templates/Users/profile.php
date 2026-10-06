@@ -166,13 +166,22 @@
                 </div>
                 <div class="d-flex align-item-center font13 font-regular mtop10">
                     <?php echo __('Do you want to set daylight saving time(DST)'); ?> ?
-                    <div class="togglebutton ml-15">
+                    <?php $isDstOn = isset($userdata['is_dst']) && $userdata['is_dst']; ?>
+                    <div class="togglebutton ml-15 kw-dst-toggle">
                         <label>
                             <?php // KEWICO: unticked boxes are not posted; send 0 then, so DST can be switched off ?>
                             <input type="hidden" name="data[User][is_dst]" value="0">
-                            <input type="checkbox" name="data[User][is_dst]" id="user_is_dst" <?php echo (isset($userdata['is_dst']) && $userdata['is_dst']) ? 'checked="checked"' : ''; ?> style="cursor:pointer;" onclick="showDstMessage();" value="1">
+                            <input type="checkbox" name="data[User][is_dst]" id="user_is_dst" <?php echo $isDstOn ? 'checked="checked"' : ''; ?> style="cursor:pointer;" onclick="showDstMessage();" value="1">
                         </label>
                     </div>
+                    <style>
+                        /* KEWICO: clear on/off look for the DST toggle: grey = off, theme colour = on.
+                           --primary is a colour or a gradient depending on the theme, so use `background`. */
+                        .kw-dst-toggle label input[type=checkbox] + .toggle { background: #bdbdbd !important; }
+                        .kw-dst-toggle label input[type=checkbox] + .toggle:after { background: #fff !important; }
+                        .kw-dst-toggle label input[type=checkbox]:checked + .toggle { background: var(--primary, #e2600d) !important; }
+                        .kw-dst-toggle label input[type=checkbox]:checked + .toggle:after { background: #fff !important; }
+                    </style>
                 </div>
             </div>
             <div class="mtop20">
