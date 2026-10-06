@@ -11,6 +11,10 @@
 # Optional environment:
 #   PHP_BIN    PHP binary to use (default: php)
 #   KEWICO_SYNC_TABLES  tables/groups to import (default: all)
+#   KEWICO_LEGACY_FILES  the old system's app/webroot/files folder. When set,
+#              new profile photos are copied from there to webroot/files/photos
+#              (only files that do not exist here yet; nothing is overwritten
+#              or deleted). Attachments are not copied: case_files is a link.
 #
 # Exit code 0 = import finished and all row counts match.
 
@@ -48,6 +52,21 @@ START=$(date +%s)
 # Output goes to a file, so CakePHP writes it without colour codes.
 "$PHP_BIN" bin/cake.php kewico import_legacy --tables "$TABLES" --truncate >> "$LOG" 2>&1
 STATUS=$?
+
+# Profile photos: a new upload in the old system gets a new file name, and the
+# imported users.photo already points at it. Copy the files that are missing.
+LEGACY_FILES=${KEWICO_LEGACY_FILES:-}
+if [ -n "$LEGACY_FILES" ]; then
+    if [ -d "$LEGACY_FILES/photos" ]; then
+        mkdir -p "$APP_DIR/webroot/files/photos"
+        BEFORE=$(ls "$APP_DIR/webroot/files/photos" | wc -l)
+        cp -Rn "$LEGACY_FILES/photos/." "$APP_DIR/webroot/files/photos/" 2>> "$LOG"
+        AFTER=$(ls "$APP_DIR/webroot/files/photos" | wc -l)
+        log "photos: $(( AFTER - BEFORE )) new file(s) copied"
+    else
+        log "photos: $LEGACY_FILES/photos not found, skipped"
+    fi
+fi
 
 # Cached query results and metadata would still show the old data.
 rm -rf "$APP_DIR"/tmp/cache/models/* "$APP_DIR"/tmp/cache/persistent/* 2>/dev/null

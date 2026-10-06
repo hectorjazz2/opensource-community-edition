@@ -65,8 +65,13 @@ changed in this system since the previous run is replaced. It only reads the
 sh plugins/Kewico/scripts/sync_legacy.sh
 
 # from cron, every night at 02:30 (full path to PHP, cron has a minimal PATH)
-30 2 * * * PHP_BIN=/usr/local/php83/bin/php /bin/sh /home/<user>/www/kewico.com/APP/CAD_NEW/plugins/Kewico/scripts/sync_legacy.sh
+30 2 * * * PHP_BIN=/usr/local/php83/bin/php KEWICO_LEGACY_FILES=/home/<user>/www/kewico.com/APP/CAD/app/webroot/files /bin/sh /home/<user>/www/kewico.com/APP/CAD_NEW/plugins/Kewico/scripts/sync_legacy.sh
 ```
+
+With `KEWICO_LEGACY_FILES` set, new profile photos are copied from the old
+system after the import (only missing files, nothing is overwritten or
+deleted). Attachments need no copy: `webroot/files/case_files` is a link to
+the old folder.
 
 One run at a time (a lock in `tmp/`), output in `logs/kewico_sync.log`, exit
 code 0 when every row count matches. The cache is cleared after each run.
