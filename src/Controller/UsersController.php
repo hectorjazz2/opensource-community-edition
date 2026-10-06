@@ -3153,7 +3153,10 @@ class UsersController extends AppController
             if (!empty($userPhone) && $userPhoto != $userInfo->phone) {
                 $userInfo->phone = $userPhone;
             }
-            $userInfo->is_dst = isset($userPostData['data']['User']['is_dst']) ? 1 : 0;
+            // KEWICO: is_dst is set above from the posted value (1 or 0). This
+            // line used to override it with "was the field posted at all",
+            // which is always true with the hidden 0 field in profile.php,
+            // so DST could never be switched off.
 
             $timezoneId = $this->request->getData('data.User.timezone_id');
             if (!empty($timezoneId) && $timezoneId != $userInfo->timezone_id) {
